@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+
+# Build / packaging artifacts
+dist/
+*.dmg
+*.zip
+
+# Secrets
+.gh_token

@@ -1,0 +1,66 @@
+name: Build Universal DMGs
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build universal DMGs (V1 + V2)
+    # Apple Silicon runner with modern Xcode: can compile both arm64 and x86_64
+    # slices and merge them with lipo into a Universal binary.
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build V1 (universal)
+        run: ./build.sh
+
+      - name: Package V1 DMG
+        run: ./make_dmg.sh
+
+      - name: Build V2 (universal)
+        run: cd V2 && ./build.sh
+
+      - name: Package V2 DMG
+        run: ./make_dmg.sh V2/dist/MusicAlarm.app dist/MusicAlarm_v2.dmg
+
+      - name: Verify universal binaries
+        run: |
+          echo "V1 binary:"
+          lipo -info dist/MusicAlarm.app/Contents/MacOS/MusicAlarm
+          echo "V2 binary:"
+          lipo -info V2/dist/MusicAlarm.app/Contents/MacOS/MusicAlarm
+
+      - name: Upload DMGs
+        uses: actions/upload-artifact@v4
+        with:
+          name: music-alarm-universal-dmgs
+          path: |
+            dist/MusicAlarm_v1.dmg
+            dist/MusicAlarm_v2.dmg
+
+  release:
+    name: Publish GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download DMGs
+        uses: actions/download-artifact@v4
+        with:
+          name: music-alarm-universal-dmgs
+          path: dist
+
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            dist/MusicAlarm_v1.dmg \
+            dist/MusicAlarm_v2.dmg \
+            --title "Music Alarm ${GITHUB_REF_NAME}" \
+            --notes "Universal build (Intel + Apple Silicon). Drag the .app from the DMG into Applications to install."

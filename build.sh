@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
-# One-click build & package script for the Music Alarm macOS app.
-# Produces ./dist/MusicAlarm.app
+# One-click universal (arm64 + x86_64) build & package script for the Music Alarm macOS app.
+# Produces ./dist/MusicAlarm.app — a fat/universal binary on toolchains that support both
+# architectures (Xcode 12+ / Swift 5.3+). On older toolchains it falls back to whatever
+# architectures it can compile and prints a warning.
+#
+# Usage:
+#   ./build.sh                     # build all ARCHS (default: arm64 x86_64)
+#   ARCHS="x86_64" ./build.sh      # build only x86_64
+#   ARCHS="arm64" ./build.sh       # build only arm64
 set -euo pipefail
 
 APP_NAME="MusicAlarm"
@@ -15,26 +22,70 @@ SRC_DIR="$BUILD_ROOT/Sources"
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
+# Architectures to build. Override with: ARCHS="x86_64" ./build.sh
+ARCHS="${ARCHS:-arm64 x86_64}"
+# Minimum macOS version (must match LSMinimumSystemVersion in Info.plist)
+MIN_MACOS="11.0"
+
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 info() { echo -e "${GREEN}==>${NC} $1"; }
 warn() { echo -e "${YELLOW}WARN:${NC} $1"; }
 
-info "Music Alarm — build & package script"
+info "Music Alarm — universal build & package script"
+info "Target architectures: $ARCHS"
 info "Cleaning previous build..."
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 
 info "Compiling Swift sources with swiftc..."
-cd "$BUILD_ROOT"
 SWIFT_FILES=$(find "$SRC_DIR" -name '*.swift' | sort)
-swiftc -O -swift-version 5 \
-  -framework SwiftUI \
-  -framework AppKit \
-  -framework AVFoundation \
-  -framework Combine \
-  -o "$MACOS_DIR/$APP_NAME" \
-  $SWIFT_FILES
-echo "   Compilation OK."
+
+# Compile for a single architecture. Prefers the modern target triple
+# (arm64/x86_64-apple-macos11.0); falls back to the legacy 10.15 triple for old
+# toolchains (e.g. Xcode 11 Command Line Tools) that reject the "macos11.0" form.
+compile_arch() {
+  local arch="$1" target
+  for t in "$arch-apple-macos${MIN_MACOS}" "$arch-apple-macosx10.15"; do
+    if swiftc -O -swift-version 5 \
+        -target "$t" \
+        -framework SwiftUI \
+        -framework AppKit \
+        -framework AVFoundation \
+        -framework Combine \
+        -o "$TMP_DIR/$APP_NAME-$arch" \
+        $SWIFT_FILES 2>"$TMP_DIR/$arch.err"; then
+      echo "   [$arch] compiled OK (target: $t)."
+      return 0
+    fi
+  done
+  echo "   [$arch] FAILED:" >&2
+  sed 's/^/       /' "$TMP_DIR/$arch.err" >&2 || true
+  return 1
+}
+
+THIN_BINARIES=()
+for arch in $ARCHS; do
+  if compile_arch "$arch"; then
+    THIN_BINARIES+=("$TMP_DIR/$APP_NAME-$arch")
+  else
+    warn "Compilation failed for $arch; skipping this architecture."
+  fi
+done
+
+if [ "${#THIN_BINARIES[@]}" -eq 0 ]; then
+  echo "ERROR: no architecture compiled successfully." >&2
+  exit 1
+fi
+
+if [ "${#THIN_BINARIES[@]}" -eq 1 ]; then
+  warn "Only one architecture built (${THIN_BINARIES[0]##*-}); this is NOT a universal binary."
+  cp "${THIN_BINARIES[0]}" "$MACOS_DIR/$APP_NAME"
+else
+  info "Merging universal binary with lipo..."
+  lipo -create "${THIN_BINARIES[@]}" -output "$MACOS_DIR/$APP_NAME"
+  lipo -info "$MACOS_DIR/$APP_NAME" || true
+fi
+echo "   Binary: $MACOS_DIR/$APP_NAME"
 
 info "Copying Info.plist..."
 cp "$BUILD_ROOT/Info.plist" "$CONTENTS/Info.plist"
