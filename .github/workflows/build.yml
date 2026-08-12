@@ -1,4 +1,4 @@
-name: Build Universal DMG
+name: build
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Build universal DMG (main version)
+    name: Build & package main version
     # Apple Silicon runner with modern Xcode: can compile both arm64 and x86_64
     # slices and merge them with lipo into a Universal binary.
     runs-on: macos-14
@@ -17,19 +17,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build main version (universal)
+      - name: Build app (universal)
         run: ./build.sh
 
       - name: Package DMG
         run: ./make_dmg.sh
 
-      - name: Verify universal binary
+      - name: Verify universal binary & localizations
         run: |
           lipo -info dist/MusicAlarm.app/Contents/MacOS/MusicAlarm
           echo "Localizations:"
           find dist/MusicAlarm.app/Contents/Resources -name '*.lproj' -maxdepth 1 | sort
 
-      - name: Upload DMG
+      - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
           name: music-alarm-universal-dmg
