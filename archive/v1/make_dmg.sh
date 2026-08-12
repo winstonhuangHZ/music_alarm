@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-click DMG installer packaging for the Music Alarm macOS app (main version).
+# One-click DMG installer packaging for the Music Alarm macOS app.
 # Packages an existing .app bundle into a compressed .dmg using the macOS
 # built-in `hdiutil` tool (no external dependencies such as create-dmg).
 #
@@ -9,15 +9,19 @@
 # Usage:
 #   ./make_dmg.sh [APP_PATH] [DMG_PATH]
 #
-# Defaults:
-#   APP_PATH = dist/MusicAlarm.app
-#   DMG_PATH = dist/MusicAlarm.dmg
+# Examples:
+#   V1:  ./make_dmg.sh                                          # dist/MusicAlarm.app -> dist/MusicAlarm_v1.dmg
+#   V2:  ./make_dmg.sh V2/dist/MusicAlarm.app dist/MusicAlarm_v2.dmg
+#
+#   Defaults:
+#     APP_PATH = dist/MusicAlarm.app
+#     DMG_PATH = dist/MusicAlarm_v1.dmg
 set -euo pipefail
 
 BUILD_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 APP_PATH="${1:-dist/MusicAlarm.app}"
-DMG_PATH="${2:-dist/MusicAlarm.dmg}"
+DMG_PATH="${2:-dist/MusicAlarm_v1.dmg}"
 
 # Resolve paths relative to the repo root unless they are absolute.
 case "$APP_PATH" in /*) ;; *) APP_PATH="$BUILD_ROOT/$APP_PATH" ;; esac
@@ -43,7 +47,7 @@ info "Music Alarm — DMG packaging"
 
 # 1) Sanity checks -----------------------------------------------------------
 if [ ! -d "$APP_DIR" ]; then
-  fail "App bundle not found at $APP_DIR. Run ./build.sh first."
+  fail "App bundle not found at $APP_DIR. Run ./build.sh (or V2/build.sh) first."
 fi
 if ! command -v hdiutil >/dev/null 2>&1; then
   fail "hdiutil not found (it ships with macOS)."

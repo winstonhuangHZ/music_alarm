@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-click universal (arm64 + x86_64) build & package script for the Music Alarm (V2) macOS app.
+# One-click universal (arm64 + x86_64) build & package script for the Music Alarm macOS app.
 # Produces ./dist/MusicAlarm.app — a fat/universal binary on toolchains that support both
 # architectures (Xcode 12+ / Swift 5.3+). On older toolchains it falls back to whatever
 # architectures it can compile and prints a warning.
@@ -31,7 +31,7 @@ GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 info() { echo -e "${GREEN}==>${NC} $1"; }
 warn() { echo -e "${YELLOW}WARN:${NC} $1"; }
 
-info "Music Alarm V2 — universal build & package script"
+info "Music Alarm — universal build & package script"
 info "Target architectures: $ARCHS"
 info "Cleaning previous build..."
 rm -rf "$APP_DIR"
@@ -89,15 +89,6 @@ echo "   Binary: $MACOS_DIR/$APP_NAME"
 
 info "Copying Info.plist..."
 cp "$BUILD_ROOT/Info.plist" "$CONTENTS/Info.plist"
-
-info "Installing localizations..."
-if [ -d "$BUILD_ROOT/Localizations" ]; then
-  cp -R "$BUILD_ROOT/Localizations/." "$RESOURCES_DIR/"
-  echo "   Localizations installed:"
-  find "$RESOURCES_DIR" -name '*.lproj' -maxdepth 1 | sort | sed 's/^/     - /'
-else
-  warn "Localizations folder not found; skipping (English-only fallback)."
-fi
 
 info "Generating app icon..."
 if command -v iconutil >/dev/null 2>&1; then

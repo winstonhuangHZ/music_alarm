@@ -7,7 +7,18 @@ enum RepeatType: String, Codable, CaseIterable, Identifiable, Equatable, Hashabl
     case weekdays = "Weekdays"
 
     var id: String { rawValue }
-    var title: String { rawValue }
+    /// Localized display title.
+    var title: String { L(rawValue) }
+}
+
+/// How an alarm plays its sound.
+enum AlarmSoundSource: String, Codable, CaseIterable, Identifiable, Equatable, Hashable {
+    case local = "Local Audio"
+    case spotify = "Spotify Playlist"
+
+    var id: String { rawValue }
+    /// Localized display title.
+    var title: String { L(rawValue) }
 }
 
 /// A single alarm. Persisted with JSON in UserDefaults.
@@ -20,17 +31,33 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     var audioName: String?
     var audioPath: String?
 
+    /// How the alarm sound is produced (local file vs. Spotify playlist).
+    var soundSource: AlarmSoundSource = .local
+
+    /// User-provided Spotify playlist link (URL or URI).
+    /// Only used when `soundSource == .spotify`.
+    var spotifyPlaylistURL: String?
+
     /// When a snoozed alarm should fire again (nil = not snoozed).
     var snoozeUntil: Date?
 
     /// Key of the minute in which the alarm was last fired (deduplication).
     var lastFiredKey: String = ""
 
-    /// 12-hour display string, e.g. "7:30 AM".
+    /// Locale-aware display string, e.g. "7:30 AM" (12 h) or "07:30" (24 h),
+    /// following the user's regional time format.
     var timeString: String {
-        let hour12 = hour % 12 == 0 ? 12 : hour % 12
-        let period = hour < 12 ? "AM" : "PM"
-        return String(format: "%d:%02d %@", hour12, minute, period)
+        var comps = DateComponents()
+        comps.hour = hour
+        comps.minute = minute
+        guard let date = Calendar.current.date(from: comps) else {
+            return String(format: "%02d:%02d", hour, minute)
+        }
+        let f = DateFormatter()
+        f.locale = Locale.current
+        f.dateStyle = .none
+        f.timeStyle = .short
+        return f.string(from: date)
     }
 
     var hasAudio: Bool {
@@ -38,8 +65,27 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         return FileManager.default.fileExists(atPath: path)
     }
 
+    /// Whether the alarm actually has a playable sound configured.
+    var hasSound: Bool {
+        switch soundSource {
+        case .local: return hasAudio
+        case .spotify:
+            guard let link = spotifyPlaylistURL else { return false }
+            return SpotifySupport.playlistID(from: link) != nil
+        }
+    }
+
     var audioDisplayName: String {
-        audioName ?? "No audio selected"
+        switch soundSource {
+        case .local:
+            return audioName ?? L("No audio selected")
+        case .spotify:
+            guard let link = spotifyPlaylistURL else { return L("Spotify Playlist") }
+            if let id = SpotifySupport.playlistID(from: link) {
+                return String(format: L("Spotify Playlist · %@"), id)
+            }
+            return L("Spotify Playlist")
+        }
     }
 
     var repeatText: String {

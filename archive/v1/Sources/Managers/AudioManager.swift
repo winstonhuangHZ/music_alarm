@@ -14,7 +14,6 @@ final class AudioManager: NSObject, ObservableObject {
     private var player: AVAudioPlayer?
     private var fadeTimer: Timer?
     private var isRinging = false
-    private var fallbackSound: NSSound?
 
     // MARK: - Preview playback
 
@@ -59,13 +58,10 @@ final class AudioManager: NSObject, ObservableObject {
         startFade(to: targetVolume, duration: fadeDuration)
     }
 
-    /// Fallback system beep used when no audio file is configured or when
-    /// Spotify control fails. Loops until `stop()` is called.
+    /// Fallback system beep used when no audio file is configured.
     func ringFallback() {
         if let sound = NSSound(named: "Glass") {
-            sound.loops = true
             sound.play()
-            fallbackSound = sound
         }
     }
 
@@ -103,8 +99,6 @@ final class AudioManager: NSObject, ObservableObject {
         fadeTimer = nil
         player?.stop()
         player = nil
-        fallbackSound?.stop()
-        fallbackSound = nil
         currentURL = nil
         nowPlayingName = nil
         isPlaying = false

@@ -1,14 +1,15 @@
-name: Build Universal DMGs
+name: Build Universal DMG
 
 on:
   workflow_dispatch:
   push:
     tags:
       - 'v*'
+  pull_request:
 
 jobs:
   build:
-    name: Build universal DMGs (V1 + V2)
+    name: Build universal DMG (main version)
     # Apple Silicon runner with modern Xcode: can compile both arm64 and x86_64
     # slices and merge them with lipo into a Universal binary.
     runs-on: macos-14
@@ -16,32 +17,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build V1 (universal)
+      - name: Build main version (universal)
         run: ./build.sh
 
-      - name: Package V1 DMG
+      - name: Package DMG
         run: ./make_dmg.sh
 
-      - name: Build V2 (universal)
-        run: cd V2 && ./build.sh
-
-      - name: Package V2 DMG
-        run: ./make_dmg.sh V2/dist/MusicAlarm.app dist/MusicAlarm_v2.dmg
-
-      - name: Verify universal binaries
+      - name: Verify universal binary
         run: |
-          echo "V1 binary:"
           lipo -info dist/MusicAlarm.app/Contents/MacOS/MusicAlarm
-          echo "V2 binary:"
-          lipo -info V2/dist/MusicAlarm.app/Contents/MacOS/MusicAlarm
+          echo "Localizations:"
+          find dist/MusicAlarm.app/Contents/Resources -name '*.lproj' -maxdepth 1 | sort
 
-      - name: Upload DMGs
+      - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
-          name: music-alarm-universal-dmgs
-          path: |
-            dist/MusicAlarm_v1.dmg
-            dist/MusicAlarm_v2.dmg
+          name: music-alarm-universal-dmg
+          path: dist/MusicAlarm.dmg
 
   release:
     name: Publish GitHub Release
@@ -49,10 +41,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Download DMGs
+      - name: Download DMG
         uses: actions/download-artifact@v4
         with:
-          name: music-alarm-universal-dmgs
+          name: music-alarm-universal-dmg
           path: dist
 
       - name: Create Release
@@ -60,7 +52,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${GITHUB_REF_NAME}" \
-            dist/MusicAlarm_v1.dmg \
-            dist/MusicAlarm_v2.dmg \
+            dist/MusicAlarm.dmg \
             --title "Music Alarm ${GITHUB_REF_NAME}" \
             --notes "Universal build (Intel + Apple Silicon). Drag the .app from the DMG into Applications to install."

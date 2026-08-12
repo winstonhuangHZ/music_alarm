@@ -1,10 +1,9 @@
 # macOS
 .DS_Store
 
-# Build / packaging artifacts
-dist/
-*.dmg
-*.zip
+# Build / packaging artifacts (main version output — repo root only).
+# Archived V1 release artifacts under archive/ are NOT affected.
+/dist/
 
 # Secrets
 .gh_token

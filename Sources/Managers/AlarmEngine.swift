@@ -10,10 +10,12 @@ final class AlarmEngine: ObservableObject {
     private var timer: Timer?
     private let store: AlarmStore
     private let audioManager: AudioManager
+    private let spotifyBridge: SpotifyBridge
 
-    init(store: AlarmStore, audioManager: AudioManager) {
+    init(store: AlarmStore, audioManager: AudioManager, spotifyBridge: SpotifyBridge = .shared) {
         self.store = store
         self.audioManager = audioManager
+        self.spotifyBridge = spotifyBridge
     }
 
     func start() {
@@ -72,10 +74,19 @@ final class AlarmEngine: ObservableObject {
         isRinging = true
         ringingAlarm = alarm
 
-        if let path = alarm.audioPath, FileManager.default.fileExists(atPath: path) {
-            audioManager.ring(url: URL(fileURLWithPath: path), name: alarm.audioName)
-        } else {
-            audioManager.ringFallback()
+        switch alarm.soundSource {
+        case .spotify:
+            // Try to start the Spotify playlist; fall back to the built-in
+            // sound if Spotify is missing, not running, or the script fails.
+            if !spotifyBridge.playPlaylist(from: alarm.spotifyPlaylistURL ?? "") {
+                audioManager.ringFallback()
+            }
+        case .local:
+            if let path = alarm.audioPath, FileManager.default.fileExists(atPath: path) {
+                audioManager.ring(url: URL(fileURLWithPath: path), name: alarm.audioName)
+            } else {
+                audioManager.ringFallback()
+            }
         }
 
         AlarmPopupController.show(
@@ -94,6 +105,7 @@ final class AlarmEngine: ObservableObject {
         }
         store.stopAlarm(alarm)
         audioManager.stop()
+        spotifyBridge.pause()
         isRinging = false
         ringingAlarm = nil
         AlarmPopupController.dismiss()
@@ -103,6 +115,7 @@ final class AlarmEngine: ObservableObject {
         guard let alarm = ringingAlarm else { return }
         store.snooze(alarm, minutes: minutes)
         audioManager.stop()
+        spotifyBridge.pause()
         isRinging = false
         ringingAlarm = nil
         AlarmPopupController.dismiss()

@@ -5,8 +5,10 @@ import SwiftUI
 struct AlarmRowView: View {
     @EnvironmentObject var store: AlarmStore
     @EnvironmentObject var audioManager: AudioManager
+    @EnvironmentObject var languageManager: LanguageManager
 
     let alarm: AlarmItem
+    let onEdit: (AlarmItem) -> Void
     let onDelete: (AlarmItem) -> Void
 
     var body: some View {
@@ -21,7 +23,7 @@ struct AlarmRowView: View {
                     Text(alarm.repeatText)
                         .font(.caption)
                     if alarm.snoozeUntil != nil {
-                        Text("• Snoozed")
+                        Text(L("• Snoozed"))
                             .font(.caption)
                             .foregroundColor(.orange)
                     }
@@ -32,14 +34,20 @@ struct AlarmRowView: View {
             Spacer()
 
             HStack(spacing: 6) {
-                Text(alarm.hasAudio ? "♪" : "⚠️")
-                    .foregroundColor(alarm.hasAudio ? Color(NSColor.controlAccentColor) : Color.orange)
+                Text(alarm.soundSource == .spotify ? "🎧" : (alarm.hasAudio ? "♪" : "⚠️"))
+                    .foregroundColor(alarm.hasSound ? Color(NSColor.controlAccentColor) : Color.orange)
                 Text(alarm.audioDisplayName)
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
             }
             .frame(maxWidth: 180, alignment: .trailing)
+
+            Button(action: { self.onEdit(self.alarm) }) {
+                Text("✏️")
+                    .font(.system(size: 14))
+            }
+            .buttonStyle(PlainButtonStyle())
 
             Toggle(isOn: enabledBinding) {
                 Text("")
@@ -59,19 +67,27 @@ struct AlarmRowView: View {
         )
         .opacity(alarm.isEnabled ? 1 : 0.7)
         .contextMenu {
-            Button(action: {
-                if let path = self.alarm.audioPath, FileManager.default.fileExists(atPath: path) {
-                    self.audioManager.togglePreview(url: URL(fileURLWithPath: path), name: (self.alarm.audioName ?? ""))
+            if self.alarm.soundSource == .local {
+                Button(action: {
+                    if let path = self.alarm.audioPath, FileManager.default.fileExists(atPath: path) {
+                        self.audioManager.togglePreview(url: URL(fileURLWithPath: path), name: (self.alarm.audioName ?? ""))
+                    }
+                }) {
+                    Text(L("Preview Sound"))
                 }
-            }) {
-                Text("Preview Sound")
+                .disabled(!self.alarm.hasAudio)
+
+                Divider()
             }
-            .disabled(!self.alarm.hasAudio)
+
+            Button(action: { self.onEdit(self.alarm) }) {
+                Text(L("Edit Alarm"))
+            }
 
             Divider()
 
             Button(action: { self.onDelete(self.alarm) }) {
-                Text("Delete Alarm")
+                Text(L("Delete Alarm"))
             }
         }
     }

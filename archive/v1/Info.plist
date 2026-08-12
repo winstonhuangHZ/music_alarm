@@ -14,28 +14,16 @@
 	<string>Music Alarm</string>
 	<key>CFBundleDisplayName</key>
 	<string>Music Alarm</string>
-	<key>CFBundleLocalizations</key>
-	<array>
-		<string>en</string>
-		<string>ar</string>
-		<string>zh-Hans</string>
-		<string>zh-Hant</string>
-		<string>fr</string>
-		<string>ru</string>
-		<string>es</string>
-	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>2.0</string>
+	<string>1.0</string>
 	<key>CFBundleVersion</key>
-	<string>2</string>
+	<string>1</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>11.0</string>
-	<key>NSAppleEventsUsageDescription</key>
-	<string>Music Alarm uses AppleScript to control Spotify so it can play your alarm playlist and pause it when you stop the alarm.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSPrincipalClass</key>

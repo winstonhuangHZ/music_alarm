@@ -5,7 +5,6 @@ import SwiftUI
 struct AudioBarView: View {
     @EnvironmentObject var store: AlarmStore
     @EnvironmentObject var audioManager: AudioManager
-    @EnvironmentObject var languageManager: LanguageManager
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -20,13 +19,13 @@ struct AudioBarView: View {
         HStack(spacing: 10) {
             Text("🎵")
                 .foregroundColor(Color.secondary)
-            Text(L("Music Library"))
+            Text("Music Library")
                 .font(.headline)
             Spacer()
             Button(action: { self.store.importAudio() }) {
                 HStack(spacing: 6) {
                     Text("➕")
-                    Text(L("Import Music"))
+                    Text("Import Music")
                 }
             }
         }
@@ -35,7 +34,7 @@ struct AudioBarView: View {
     private var musicList: some View {
         Group {
             if store.importedAudios.isEmpty {
-                Text(L("No music imported. Click “Import Music” to add .mp3 / .m4a files."))
+                Text("No music imported. Click “Import Music” to add .mp3 / .m4a files.")
                     .font(.caption)
                     .foregroundColor(Color.secondary)
                     .padding(.leading, 26)

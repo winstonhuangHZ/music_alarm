@@ -23,7 +23,6 @@ struct AlarmPopupView: View {
             alarmIcon
             titleText
             timeText
-            soundText
             actionButtons
         }
         .padding(32)
@@ -48,7 +47,7 @@ struct AlarmPopupView: View {
     }
 
     private var titleText: some View {
-        Text(L("Time to wake up!"))
+        Text("Time to wake up!")
             .font(.system(size: 28, weight: .bold))
             .opacity(appeared ? 1 : 0)
             .offset(y: appeared ? 0 : 8)
@@ -61,19 +60,12 @@ struct AlarmPopupView: View {
             .opacity(appeared ? 1 : 0)
     }
 
-    private var soundText: some View {
-        Text("\(alarm.soundSource == .spotify ? "🎧" : "🎵") \(alarm.audioDisplayName)")
-            .font(.caption)
-            .foregroundColor(Color.secondary)
-            .opacity(appeared ? 1 : 0)
-    }
-
     private var actionButtons: some View {
         HStack(spacing: 18) {
             Button(action: { self.onSnooze(self.alarm) }) {
                 HStack(spacing: 8) {
                     Text("💤")
-                    Text(L("Snooze 5 min"))
+                    Text("Snooze 5 min")
                 }
                 .font(.headline)
                 .foregroundColor(.white)
@@ -87,7 +79,7 @@ struct AlarmPopupView: View {
             Button(action: { self.onStop(self.alarm) }) {
                 HStack(spacing: 8) {
                     Text("⏹")
-                    Text(L("Stop"))
+                    Text("Stop")
                 }
                 .font(.headline)
                 .foregroundColor(.white)

@@ -42,8 +42,7 @@ struct DigitalClockView: View {
 
     private func dateText(_ date: Date) -> String {
         let f = DateFormatter()
-        f.locale = Locale.current
-        f.setLocalizedDateFormatFromTemplate("EEEEdMMMMy")
+        f.dateFormat = "EEEE, MMMM d, yyyy"
         return f.string(from: date)
     }
 }

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Publish a GitHub Release for Music Alarm (main version) using the REST API.
+# Publish a GitHub Release for Music Alarm using the REST API.
 #
-# Creates release tag v2.0.0 (pushed if needed) and uploads:
-#   - dist/MusicAlarm.dmg   (universal: Intel + Apple Silicon)
+# Creates release tag v1.0.0 (pushed if needed) and uploads:
+#   - dist/MusicAlarm_v1.dmg   (universal: Intel + Apple Silicon)
+#   - dist/MusicAlarm_v2.dmg   (universal: Intel + Apple Silicon)
 #
 # Auth (first one wins):
 #   1. $GH_TOKEN environment variable
@@ -13,10 +14,10 @@
 #   ./publish_release.sh
 set -euo pipefail
 
-TAG="${TAG:-v2.0.0}"
-RELEASE_NAME="${RELEASE_NAME:-Music Alarm v2.0.0}"
+TAG="${TAG:-v1.0.0}"
+RELEASE_NAME="${RELEASE_NAME:-Music Alarm v1.0.0}"
 BODY_FILE="RELEASE_NOTES.md"
-ASSETS=("dist/MusicAlarm.dmg")
+ASSETS=("dist/MusicAlarm_v1.dmg" "dist/MusicAlarm_v2.dmg")
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 info() { echo -e "${GREEN}==>${NC} $1"; }
