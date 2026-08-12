@@ -14,6 +14,16 @@
 	<string>Music Alarm</string>
 	<key>CFBundleDisplayName</key>
 	<string>Music Alarm</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ar</string>
+		<string>zh-Hans</string>
+		<string>zh-Hant</string>
+		<string>fr</string>
+		<string>ru</string>
+		<string>es</string>
+	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

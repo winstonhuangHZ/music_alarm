@@ -46,6 +46,9 @@ final class AlarmStore: ObservableObject {
         if let data = try? JSONEncoder().encode(importedAudios) {
             UserDefaults.standard.set(data, forKey: audiosKey)
         }
+        // Force a synchronous flush to disk so alarms / imported music survive
+        // an immediate app quit or crash right after a mutation.
+        UserDefaults.standard.synchronize()
     }
 
     // MARK: - Alarms
@@ -56,6 +59,16 @@ final class AlarmStore: ObservableObject {
 
     func removeAlarm(_ alarm: AlarmItem) {
         alarms.removeAll { $0.id == alarm.id }
+    }
+
+    /// Replaces an existing alarm in-place with an edited copy.
+    func updateAlarm(_ alarm: AlarmItem) {
+        guard let idx = alarms.firstIndex(where: { $0.id == alarm.id }) else { return }
+        // Preserve runtime state (snooze / last-fire dedup flag) when editing.
+        var updated = alarm
+        updated.snoozeUntil = alarms[idx].snoozeUntil
+        updated.lastFiredKey = alarms[idx].lastFiredKey
+        alarms[idx] = updated
     }
 
     func toggleEnabled(id: UUID, enabled: Bool) {
@@ -115,9 +128,9 @@ final class AlarmStore: ObservableObject {
     @discardableResult
     func importAudio() -> ImportedAudio? {
         let panel = NSOpenPanel()
-        panel.title = "Import Music"
-        panel.prompt = "Import"
-        panel.message = "Select an .mp3 or .m4a audio file"
+        panel.title = L("Import Music")
+        panel.prompt = L("Import")
+        panel.message = L("Select an .mp3 or .m4a audio file")
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.canChooseFiles = true

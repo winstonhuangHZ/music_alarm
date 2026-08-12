@@ -48,7 +48,7 @@ struct AlarmPopupView: View {
     }
 
     private var titleText: some View {
-        Text("Time to wake up!")
+        Text(L("Time to wake up!"))
             .font(.system(size: 28, weight: .bold))
             .opacity(appeared ? 1 : 0)
             .offset(y: appeared ? 0 : 8)
@@ -73,7 +73,7 @@ struct AlarmPopupView: View {
             Button(action: { self.onSnooze(self.alarm) }) {
                 HStack(spacing: 8) {
                     Text("💤")
-                    Text("Snooze 5 min")
+                    Text(L("Snooze 5 min"))
                 }
                 .font(.headline)
                 .foregroundColor(.white)
@@ -87,7 +87,7 @@ struct AlarmPopupView: View {
             Button(action: { self.onStop(self.alarm) }) {
                 HStack(spacing: 8) {
                     Text("⏹")
-                    Text("Stop")
+                    Text(L("Stop"))
                 }
                 .font(.headline)
                 .foregroundColor(.white)

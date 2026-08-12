@@ -90,6 +90,15 @@ echo "   Binary: $MACOS_DIR/$APP_NAME"
 info "Copying Info.plist..."
 cp "$BUILD_ROOT/Info.plist" "$CONTENTS/Info.plist"
 
+info "Installing localizations..."
+if [ -d "$BUILD_ROOT/Localizations" ]; then
+  cp -R "$BUILD_ROOT/Localizations/." "$RESOURCES_DIR/"
+  echo "   Localizations installed:"
+  find "$RESOURCES_DIR" -name '*.lproj' -maxdepth 1 | sort | sed 's/^/     - /'
+else
+  warn "Localizations folder not found; skipping (English-only fallback)."
+fi
+
 info "Generating app icon..."
 if command -v iconutil >/dev/null 2>&1; then
   if swiftc -O scripts/generate_icon.swift -framework AppKit -o "$TMP_DIR/genicon" >/dev/null 2>&1 \

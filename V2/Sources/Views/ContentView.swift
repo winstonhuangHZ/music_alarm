@@ -8,8 +8,10 @@ import AppKit
 struct ContentView: View {
     @EnvironmentObject var store: AlarmStore
     @EnvironmentObject var audioManager: AudioManager
+    @EnvironmentObject var languageManager: LanguageManager
 
     @State private var showAddAlarm = false
+    @State private var editingAlarm: AlarmItem?
     @State private var now = Date()
     @State private var clockTimer: Timer?
 
@@ -26,7 +28,7 @@ struct ContentView: View {
         .frame(minWidth: 760, minHeight: 640)
         .background(Color(NSColor.windowBackgroundColor))
         .sheet(isPresented: $showAddAlarm) {
-            AddAlarmView()
+            AddAlarmView(alarm: self.editingAlarm)
         }
         .onAppear {
             self.startClock()
@@ -78,9 +80,9 @@ struct ContentView: View {
             HStack(spacing: 6) {
                 Text("⏳")
                 if hasNext {
-                    Text("Next alarm in \(countdownText)")
+                    Text(String(format: L("Next alarm in %@"), countdownText))
                 } else {
-                    Text("No upcoming alarm")
+                    Text(L("No upcoming alarm"))
                 }
             }
             .font(.system(size: 17, weight: .semibold))
@@ -100,13 +102,13 @@ struct ContentView: View {
 
     private func countdownString(from now: Date, to target: Date) -> String {
         let secs = Int(target.timeIntervalSince(now))
-        if secs < 0 { return "now" }
+        if secs < 0 { return L("now") }
         let h = secs / 3600
         let m = (secs % 3600) / 60
         let s = secs % 60
-        if h > 0 { return "\(h)h \(m)m" }
-        if m > 0 { return "\(m)m \(s)s" }
-        return "\(s)s"
+        if h > 0 { return String(format: L("%dh %dm"), h, m) }
+        if m > 0 { return String(format: L("%dm %ds"), m, s) }
+        return String(format: L("%ds"), s)
     }
 
     // MARK: - Alarm list
@@ -119,9 +121,15 @@ struct ContentView: View {
                 ScrollView {
                     VStack(spacing: 10) {
                         ForEach(store.alarms) { alarm in
-                            AlarmRowView(alarm: alarm) { target in
-                                self.store.removeAlarm(target)
-                            }
+                            AlarmRowView(
+                                alarm: alarm,
+                                onEdit: { target in
+                                    self.beginEditing(target)
+                                },
+                                onDelete: { target in
+                                    self.store.removeAlarm(target)
+                                }
+                            )
                         }
                     }
                     .padding(14)
@@ -135,25 +143,40 @@ struct ContentView: View {
             Text("⏰")
                 .font(.system(size: 44))
                 .foregroundColor(Color.secondary)
-            Text("No alarms yet")
+            Text(L("No alarms yet"))
                 .font(.system(size: 18, weight: .medium))
                 .foregroundColor(Color.secondary)
-            Text("Click “Add Alarm” to create your first alarm.")
+            Text(L("Click “Add Alarm” to create your first alarm."))
                 .font(.caption)
                 .foregroundColor(Color.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    // MARK: - Add / Edit
+
+    /// Opens the add-alarm sheet in "new alarm" mode.
+    private func showNewAlarm() {
+        editingAlarm = nil
+        showAddAlarm = true
+    }
+
+    /// Opens the add-alarm sheet pre-filled with an existing alarm.
+    private func beginEditing(_ alarm: AlarmItem) {
+        editingAlarm = alarm
+        showAddAlarm = true
+    }
+
     // MARK: - Footer
 
     private var footerBar: some View {
         HStack {
+            languagePicker
             Spacer()
-            Button(action: { self.showAddAlarm = true }) {
+            Button(action: { self.showNewAlarm() }) {
                 HStack(spacing: 8) {
                     Text("➕")
-                    Text("Add Alarm")
+                    Text(L("Add Alarm"))
                 }
                 .font(.headline)
                 .foregroundColor(Color.red)
@@ -164,5 +187,25 @@ struct ContentView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+    }
+
+    /// In-app language switcher picker (bottom-left of the footer).
+    private var languagePicker: some View {
+        HStack(spacing: 8) {
+            Text("🌐")
+                .font(.system(size: 14))
+                .foregroundColor(Color.secondary)
+            Picker(selection: $languageManager.selectedLanguage, label: EmptyView()) {
+                Text(L("System Default")).tag("")
+                Text("English").tag("en")
+                Text("简体中文").tag("zh-Hans")
+                Text("繁體中文").tag("zh-Hant")
+                Text("Français").tag("fr")
+                Text("Español").tag("es")
+                Text("Русский").tag("ru")
+                Text("العربية").tag("ar")
+            }
+            .frame(width: 170)
+        }
     }
 }

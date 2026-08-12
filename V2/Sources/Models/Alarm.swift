@@ -7,7 +7,8 @@ enum RepeatType: String, Codable, CaseIterable, Identifiable, Equatable, Hashabl
     case weekdays = "Weekdays"
 
     var id: String { rawValue }
-    var title: String { rawValue }
+    /// Localized display title.
+    var title: String { L(rawValue) }
 }
 
 /// How an alarm plays its sound.
@@ -16,7 +17,8 @@ enum AlarmSoundSource: String, Codable, CaseIterable, Identifiable, Equatable, H
     case spotify = "Spotify Playlist"
 
     var id: String { rawValue }
-    var title: String { rawValue }
+    /// Localized display title.
+    var title: String { L(rawValue) }
 }
 
 /// A single alarm. Persisted with JSON in UserDefaults.
@@ -42,11 +44,20 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     /// Key of the minute in which the alarm was last fired (deduplication).
     var lastFiredKey: String = ""
 
-    /// 12-hour display string, e.g. "7:30 AM".
+    /// Locale-aware display string, e.g. "7:30 AM" (12 h) or "07:30" (24 h),
+    /// following the user's regional time format.
     var timeString: String {
-        let hour12 = hour % 12 == 0 ? 12 : hour % 12
-        let period = hour < 12 ? "AM" : "PM"
-        return String(format: "%d:%02d %@", hour12, minute, period)
+        var comps = DateComponents()
+        comps.hour = hour
+        comps.minute = minute
+        guard let date = Calendar.current.date(from: comps) else {
+            return String(format: "%02d:%02d", hour, minute)
+        }
+        let f = DateFormatter()
+        f.locale = Locale.current
+        f.dateStyle = .none
+        f.timeStyle = .short
+        return f.string(from: date)
     }
 
     var hasAudio: Bool {
@@ -67,13 +78,13 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     var audioDisplayName: String {
         switch soundSource {
         case .local:
-            return audioName ?? "No audio selected"
+            return audioName ?? L("No audio selected")
         case .spotify:
-            guard let link = spotifyPlaylistURL else { return "Spotify Playlist" }
+            guard let link = spotifyPlaylistURL else { return L("Spotify Playlist") }
             if let id = SpotifySupport.playlistID(from: link) {
-                return "Spotify Playlist · \(id)"
+                return String(format: L("Spotify Playlist · %@"), id)
             }
-            return "Spotify Playlist"
+            return L("Spotify Playlist")
         }
     }
 
