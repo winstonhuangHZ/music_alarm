@@ -19,6 +19,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.audioManager = audio
         self.engine = engine
 
+        // Wire sequential playlist callback: when a local track finishes,
+        // advance to the next track in the playlist.
+        audio.onTrackFinished = { [weak engine] in
+            engine?.advanceToNextTrack()
+        }
+
         engine.start()
         setupMenu()
         createMainWindow()

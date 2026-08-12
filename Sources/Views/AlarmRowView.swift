@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// One alarm card in the list: time, repeat info, sound name, enable toggle,
+/// One alarm card in the list: time, repeat info, track summary, enable toggle,
 /// and a context menu with preview / delete.
 struct AlarmRowView: View {
     @EnvironmentObject var store: AlarmStore
@@ -34,7 +34,7 @@ struct AlarmRowView: View {
             Spacer()
 
             HStack(spacing: 6) {
-                Text(alarm.soundSource == .spotify ? "🎧" : (alarm.hasAudio ? "♪" : "⚠️"))
+                Text(alarm.hasSound ? alarm.sourceSummary : "⚠️")
                     .foregroundColor(alarm.hasSound ? Color(NSColor.controlAccentColor) : Color.orange)
                 Text(alarm.audioDisplayName)
                     .font(.caption)
@@ -67,18 +67,16 @@ struct AlarmRowView: View {
         )
         .opacity(alarm.isEnabled ? 1 : 0.7)
         .contextMenu {
-            if self.alarm.soundSource == .local {
-                Button(action: {
-                    if let path = self.alarm.audioPath, FileManager.default.fileExists(atPath: path) {
-                        self.audioManager.togglePreview(url: URL(fileURLWithPath: path), name: (self.alarm.audioName ?? ""))
-                    }
-                }) {
-                    Text(L("Preview Sound"))
-                }
-                .disabled(!self.alarm.hasAudio)
-
-                Divider()
+            // Preview first local track (disabled when none is playable)
+            Button(action: {
+                guard let preview = self.firstLocalPreview else { return }
+                self.audioManager.togglePreview(url: URL(fileURLWithPath: preview.path), name: preview.name)
+            }) {
+                Text(L("Preview Sound"))
             }
+            .disabled(self.firstLocalPreview == nil)
+
+            Divider()
 
             Button(action: { self.onEdit(self.alarm) }) {
                 Text(L("Edit Alarm"))
@@ -90,6 +88,16 @@ struct AlarmRowView: View {
                 Text(L("Delete Alarm"))
             }
         }
+    }
+
+    /// The first playable local track (name + path), if any — used for the
+    /// "Preview Sound" context-menu entry.
+    private var firstLocalPreview: (name: String, path: String)? {
+        for case .local(let name, let path, _) in alarm.tracks
+        where FileManager.default.fileExists(atPath: path) {
+            return (name, path)
+        }
+        return nil
     }
 
     private var enabledBinding: Binding<Bool> {

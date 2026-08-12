@@ -18,8 +18,12 @@
 "Import Music…" = "Importar música…";
 "Cancel" = "Cancelar";
 "Save" = "Guardar";
+"Paste a Spotify playlist, track or album link" = "Pega un enlace de lista, canción o álbum de Spotify";
 "Paste a Spotify playlist link — URL or spotify:playlist:…" = "Pega un enlace de lista de Spotify — URL o spotify:playlist:…";
 "✓ Valid playlist — will play in order." = "✓ Lista válida — se reproducirá en orden.";
+"✓ Valid track — single song." = "✓ Canción válida — una sola canción.";
+"✓ Valid album — will play in order." = "✓ Álbum válido — se reproducirá en orden.";
+"⚠️ Could not parse a Spotify link." = "⚠️ No se pudo analizar un enlace de Spotify.";
 "⚠️ Could not parse a Spotify playlist link." = "⚠️ No se pudo analizar un enlace de lista de Spotify.";
 "Once" = "Una vez";
 "Daily" = "Diaria";
@@ -28,6 +32,8 @@
 "Spotify Playlist" = "Lista de Spotify";
 "Spotify Playlist · %@" = "Lista de Spotify · %@";
 "No audio selected" = "Ningún audio seleccionado";
+"%d tracks" = "%d pistas";
+"No audio" = "Sin audio";
 "• Snoozed" = "• Pospuesta";
 "Preview Sound" = "Vista previa del sonido";
 "Edit Alarm" = "Editar alarma";
@@ -43,3 +49,11 @@
 "About Music Alarm" = "Acerca de Music Alarm";
 "Hide Music Alarm" = "Ocultar Music Alarm";
 "Quit Music Alarm" = "Salir de Music Alarm";
+"Local" = "Local";
+"Spotify" = "Spotify";
+"Playlist" = "Lista";
+"Add Track" = "Añadir pista";
+"Tracks" = "Pistas";
+"No tracks yet. Add local files or Spotify links below." = "Aún no hay pistas. Añade archivos locales o enlaces de Spotify a continuación.";
+"Import & Add" = "Importar y añadir";
+"Add to Playlist" = "Añadir a la lista";

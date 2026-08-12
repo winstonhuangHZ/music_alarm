@@ -25,12 +25,17 @@ final class AlarmStore: ObservableObject {
     private let audiosKey = "MusicAlarm.importedAudios.v1"
 
     init() {
+        var loadedAlarms: [AlarmItem] = []
         if let data = UserDefaults.standard.data(forKey: alarmsKey),
            let decoded = try? JSONDecoder().decode([AlarmItem].self, from: data) {
-            alarms = decoded
-        } else {
-            alarms = []
+            loadedAlarms = decoded
         }
+        // Migrate v2.0 single-audio data → v2.1 tracks array
+        for i in loadedAlarms.indices {
+            loadedAlarms[i].migrateIfNeeded()
+        }
+        alarms = loadedAlarms
+
         if let data = UserDefaults.standard.data(forKey: audiosKey),
            let decoded = try? JSONDecoder().decode([ImportedAudio].self, from: data) {
             importedAudios = decoded

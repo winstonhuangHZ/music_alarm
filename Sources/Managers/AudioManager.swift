@@ -4,12 +4,14 @@ import AppKit
 import Combine
 
 /// Audio playback engine built on AVAudioPlayer (perfect .m4a / .mp3 decoding).
-/// Supports normal preview playback and alarm ringing with a smooth volume
-/// fade-in from 0 up to the target volume over a configurable duration.
 final class AudioManager: NSObject, ObservableObject {
     @Published private(set) var isPlaying = false
     @Published private(set) var currentURL: URL?
     @Published private(set) var nowPlayingName: String?
+
+    /// Called when a local track finishes during alarm ringing (for
+    /// sequential playlist support — advances to the next track).
+    var onTrackFinished: (() -> Void)?
 
     private var player: AVAudioPlayer?
     private var fadeTimer: Timer?
@@ -38,11 +40,10 @@ final class AudioManager: NSObject, ObservableObject {
         isPlaying = true
     }
 
-    // MARK: - Alarm ringing (progressive volume fade-in)
+    // MARK: - Alarm ringing
 
-    /// Starts looping playback with a fade-in from volume 0 to `targetVolume`
-    /// over `fadeDuration` seconds (15–30 s recommended).
-    func ring(url: URL, name: String?, fadeDuration: TimeInterval = 20, targetVolume: Float = 0.85) {
+    func ring(url: URL, name: String?, numberOfLoops: Int = -1,
+              fadeDuration: TimeInterval = 20, targetVolume: Float = 0.85) {
         stop()
         guard let p = makePlayer(url: url) else {
             ringFallback()
@@ -50,7 +51,7 @@ final class AudioManager: NSObject, ObservableObject {
         }
         isRinging = true
         p.volume = 0
-        p.numberOfLoops = -1 // loop until stopped
+        p.numberOfLoops = numberOfLoops
         p.play()
         player = p
         currentURL = url
@@ -59,8 +60,6 @@ final class AudioManager: NSObject, ObservableObject {
         startFade(to: targetVolume, duration: fadeDuration)
     }
 
-    /// Fallback system beep used when no audio file is configured or when
-    /// Spotify control fails. Loops until `stop()` is called.
     func ringFallback() {
         if let sound = NSSound(named: "Glass") {
             sound.loops = true
@@ -115,7 +114,9 @@ final class AudioManager: NSObject, ObservableObject {
 extension AudioManager: AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         DispatchQueue.main.async {
-            if !self.isRinging {
+            if self.isRinging {
+                self.onTrackFinished?()
+            } else {
                 self.isPlaying = false
                 self.currentURL = nil
                 self.nowPlayingName = nil

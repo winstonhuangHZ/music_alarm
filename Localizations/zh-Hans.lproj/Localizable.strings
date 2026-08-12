@@ -18,8 +18,12 @@
 "Import Music…" = "导入音乐…";
 "Cancel" = "取消";
 "Save" = "保存";
+"Paste a Spotify playlist, track or album link" = "粘贴 Spotify 播放列表、单曲或专辑链接";
 "Paste a Spotify playlist link — URL or spotify:playlist:…" = "粘贴 Spotify 播放列表链接 — URL 或 spotify:playlist:…";
 "✓ Valid playlist — will play in order." = "✓ 有效的播放列表 — 将按顺序播放。";
+"✓ Valid track — single song." = "✓ 有效的单曲 — 将播放单首歌曲。";
+"✓ Valid album — will play in order." = "✓ 有效的专辑 — 将按顺序播放。";
+"⚠️ Could not parse a Spotify link." = "⚠️ 无法解析 Spotify 链接。";
 "⚠️ Could not parse a Spotify playlist link." = "⚠️ 无法解析 Spotify 播放列表链接。";
 "Once" = "仅一次";
 "Daily" = "每天";
@@ -28,6 +32,8 @@
 "Spotify Playlist" = "Spotify 播放列表";
 "Spotify Playlist · %@" = "Spotify 播放列表 · %@";
 "No audio selected" = "未选择音频";
+"%d tracks" = "%d 个音轨";
+"No audio" = "无音频";
 "• Snoozed" = "• 已贪睡";
 "Preview Sound" = "试听铃声";
 "Edit Alarm" = "编辑闹钟";
@@ -43,3 +49,11 @@
 "About Music Alarm" = "关于 Music Alarm";
 "Hide Music Alarm" = "隐藏 Music Alarm";
 "Quit Music Alarm" = "退出 Music Alarm";
+"Local" = "本地";
+"Spotify" = "Spotify";
+"Playlist" = "播放列表";
+"Add Track" = "添加音轨";
+"Tracks" = "音轨";
+"No tracks yet. Add local files or Spotify links below." = "还没有音轨。请在下方添加本地文件或 Spotify 链接。";
+"Import & Add" = "导入并添加";
+"Add to Playlist" = "添加到播放列表";

@@ -7,17 +7,6 @@ enum RepeatType: String, Codable, CaseIterable, Identifiable, Equatable, Hashabl
     case weekdays = "Weekdays"
 
     var id: String { rawValue }
-    /// Localized display title.
-    var title: String { L(rawValue) }
-}
-
-/// How an alarm plays its sound.
-enum AlarmSoundSource: String, Codable, CaseIterable, Identifiable, Equatable, Hashable {
-    case local = "Local Audio"
-    case spotify = "Spotify Playlist"
-
-    var id: String { rawValue }
-    /// Localized display title.
     var title: String { L(rawValue) }
 }
 
@@ -28,24 +17,27 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     var minute: Int = 0
     var repeatType: RepeatType = .once
     var isEnabled: Bool = true
+
+    // ---- v2.1 playlist model ----
+    /// Ordered list of audio tracks for this alarm (local + Spotify links mixed).
+    var tracks: [AudioTrack] = []
+
+    // ---- v2.0 single-audio fields (kept for backwards compatibility) ----
     var audioName: String?
     var audioPath: String?
 
-    /// How the alarm sound is produced (local file vs. Spotify playlist).
-    var soundSource: AlarmSoundSource = .local
+    /// Deprecated; use tracks array instead.
+    var soundSource: String? = nil
 
-    /// User-provided Spotify playlist link (URL or URI).
-    /// Only used when `soundSource == .spotify`.
+    /// Deprecated; use tracks array instead.
     var spotifyPlaylistURL: String?
 
-    /// When a snoozed alarm should fire again (nil = not snoozed).
+    // ---- runtime state ----
     var snoozeUntil: Date?
-
-    /// Key of the minute in which the alarm was last fired (deduplication).
     var lastFiredKey: String = ""
 
-    /// Locale-aware display string, e.g. "7:30 AM" (12 h) or "07:30" (24 h),
-    /// following the user's regional time format.
+    // MARK: - Display
+
     var timeString: String {
         var comps = DateComponents()
         comps.hour = hour
@@ -60,43 +52,34 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         return f.string(from: date)
     }
 
-    var hasAudio: Bool {
-        guard let path = audioPath else { return false }
-        return FileManager.default.fileExists(atPath: path)
-    }
-
-    /// Whether the alarm actually has a playable sound configured.
+    /// Whether the alarm actually has at least one playable sound configured.
     var hasSound: Bool {
-        switch soundSource {
-        case .local: return hasAudio
-        case .spotify:
-            guard let link = spotifyPlaylistURL else { return false }
-            return SpotifySupport.playlistID(from: link) != nil
-        }
+        tracks.contains { $0.isPlayable }
     }
 
+    /// Compact summary shown in the alarm row.
     var audioDisplayName: String {
-        switch soundSource {
-        case .local:
-            return audioName ?? L("No audio selected")
-        case .spotify:
-            guard let link = spotifyPlaylistURL else { return L("Spotify Playlist") }
-            if let id = SpotifySupport.playlistID(from: link) {
-                return String(format: L("Spotify Playlist · %@"), id)
-            }
-            return L("Spotify Playlist")
-        }
+        if tracks.isEmpty { return L("No audio selected") }
+        if tracks.count == 1 { return tracks[0].displayName }
+        return String(format: L("%d tracks"), tracks.count)
     }
 
-    var repeatText: String {
-        repeatType.title
+    /// Count of tracks grouped by source for display.
+    var sourceSummary: String {
+        let local = tracks.filter { if case .local = $0 { return true }; return false }.count
+        let spotify = tracks.count - local
+        if local > 0 && spotify > 0 { return "🎵\(local) 🎧\(spotify)" }
+        if local > 0 { return "🎵 \(local)" }
+        if spotify > 0 { return "🎧 \(spotify)" }
+        return L("No audio")
     }
 
-    /// Next date this alarm will fire, based on its schedule and repeat type.
+    var repeatText: String { repeatType.title }
+
+    // MARK: - Next fire date
+
     func nextFireDate(from now: Date = Date()) -> Date? {
-        if let snooze = snoozeUntil, snooze > now {
-            return snooze
-        }
+        if let snooze = snoozeUntil, snooze > now { return snooze }
         let cal = Calendar.current
         guard var next = cal.date(bySettingHour: hour, minute: minute, second: 0, of: now) else { return nil }
         if next <= now {
@@ -104,8 +87,7 @@ struct AlarmItem: Identifiable, Codable, Equatable {
             next = plus
         }
         switch repeatType {
-        case .once, .daily:
-            return next
+        case .once, .daily: return next
         case .weekdays:
             var candidate = next
             while true {
@@ -114,6 +96,20 @@ struct AlarmItem: Identifiable, Codable, Equatable {
                 guard let c = cal.date(byAdding: .day, value: 1, to: candidate) else { return nil }
                 candidate = c
             }
+        }
+    }
+
+    // MARK: - Backwards-compat migration
+
+    /// Call on first decode if `tracks` is empty but legacy fields exist, to
+    /// populate the v2.1 tracks array from old v2.0 single-audio data.
+    mutating func migrateIfNeeded() {
+        guard tracks.isEmpty else { return }
+        let source = soundSource ?? "local"
+        if source == "spotify", let link = spotifyPlaylistURL, !link.isEmpty {
+            tracks = [.spotify(link: link)]
+        } else if let path = audioPath, let name = audioName, !path.isEmpty {
+            tracks = [.local(name: name, path: path, audioID: id)]
         }
     }
 }

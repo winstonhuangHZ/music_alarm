@@ -23,7 +23,7 @@ struct AlarmPopupView: View {
             alarmIcon
             titleText
             timeText
-            soundText
+            trackSection
             actionButtons
         }
         .padding(32)
@@ -61,11 +61,63 @@ struct AlarmPopupView: View {
             .opacity(appeared ? 1 : 0)
     }
 
-    private var soundText: some View {
-        Text("\(alarm.soundSource == .spotify ? "🎧" : "🎵") \(alarm.audioDisplayName)")
-            .font(.caption)
-            .foregroundColor(Color.secondary)
-            .opacity(appeared ? 1 : 0)
+    /// The playlist section: a source summary and the ordered list of tracks
+    /// (local + Spotify, freely mixable) that the alarm plays sequentially.
+    /// Tracks are numbered with their icon and display name; the first track
+    /// carries a "now playing" marker because `AlarmEngine` starts there.
+    private var trackSection: some View {
+        VStack(spacing: 6) {
+            if alarm.tracks.isEmpty {
+                HStack(spacing: 6) {
+                    Text("⚠️")
+                    Text(alarm.audioDisplayName)
+                }
+                .font(.caption)
+                .foregroundColor(Color.secondary)
+            } else {
+                HStack(spacing: 6) {
+                    Text(L("Tracks"))
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(Color.secondary)
+                    Text(alarm.hasSound ? alarm.sourceSummary : "⚠️")
+                        .font(.system(size: 11))
+                    Text(alarm.audioDisplayName)
+                        .font(.caption)
+                        .foregroundColor(Color.secondary)
+                        .lineLimit(1)
+                }
+
+                if alarm.tracks.count > 1 {
+                    ScrollView {
+                        VStack(spacing: 4) {
+                            ForEach(Array(alarm.tracks.enumerated()), id: \.offset) { idx, track in
+                                HStack(spacing: 6) {
+                                    Text("\(idx + 1)")
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundColor(Color.secondary)
+                                        .frame(width: 14)
+                                    Text(track.icon)
+                                        .font(.system(size: 11))
+                                    Text(track.displayName)
+                                        .font(.caption)
+                                        .foregroundColor(Color.secondary)
+                                        .lineLimit(1)
+                                    Spacer()
+                                    if idx == 0 {
+                                        Text("🔊")
+                                            .font(.system(size: 10))
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    .frame(maxHeight: 96)
+                }
+            }
+        }
+        .opacity(appeared ? 1 : 0)
     }
 
     private var actionButtons: some View {

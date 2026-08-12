@@ -18,8 +18,12 @@
 "Import Music…" = "Импортировать музыку…";
 "Cancel" = "Отмена";
 "Save" = "Сохранить";
+"Paste a Spotify playlist, track or album link" = "Вставьте ссылку на плейлист, трек или альбом Spotify";
 "Paste a Spotify playlist link — URL or spotify:playlist:…" = "Вставьте ссылку на плейлист Spotify — URL или spotify:playlist:…";
 "✓ Valid playlist — will play in order." = "✓ Действительный плейлист — будет воспроизведён по порядку.";
+"✓ Valid track — single song." = "✓ Действительный трек — одна песня.";
+"✓ Valid album — will play in order." = "✓ Действительный альбом — будет воспроизведён по порядку.";
+"⚠️ Could not parse a Spotify link." = "⚠️ Не удалось распознать ссылку Spotify.";
 "⚠️ Could not parse a Spotify playlist link." = "⚠️ Не удалось распознать ссылку на плейлист Spotify.";
 "Once" = "Один раз";
 "Daily" = "Ежедневно";
@@ -28,6 +32,8 @@
 "Spotify Playlist" = "Плейлист Spotify";
 "Spotify Playlist · %@" = "Плейлист Spotify · %@";
 "No audio selected" = "Аудио не выбрано";
+"%d tracks" = "%d треков";
+"No audio" = "Нет аудио";
 "• Snoozed" = "• Отложен";
 "Preview Sound" = "Прослушать звук";
 "Edit Alarm" = "Редактировать будильник";
@@ -43,3 +49,11 @@
 "About Music Alarm" = "О Music Alarm";
 "Hide Music Alarm" = "Скрыть Music Alarm";
 "Quit Music Alarm" = "Выйти из Music Alarm";
+"Local" = "Локальное";
+"Spotify" = "Spotify";
+"Playlist" = "Плейлист";
+"Add Track" = "Добавить трек";
+"Tracks" = "Треки";
+"No tracks yet. Add local files or Spotify links below." = "Пока нет треков. Добавьте локальные файлы или ссылки Spotify ниже.";
+"Import & Add" = "Импортировать и добавить";
+"Add to Playlist" = "Добавить в плейлист";

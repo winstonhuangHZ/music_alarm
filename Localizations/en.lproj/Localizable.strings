@@ -18,8 +18,12 @@
 "Import Music…" = "Import Music…";
 "Cancel" = "Cancel";
 "Save" = "Save";
+"Paste a Spotify playlist, track or album link" = "Paste a Spotify playlist, track or album link";
 "Paste a Spotify playlist link — URL or spotify:playlist:…" = "Paste a Spotify playlist link — URL or spotify:playlist:…";
 "✓ Valid playlist — will play in order." = "✓ Valid playlist — will play in order.";
+"✓ Valid track — single song." = "✓ Valid track — single song.";
+"✓ Valid album — will play in order." = "✓ Valid album — will play in order.";
+"⚠️ Could not parse a Spotify link." = "⚠️ Could not parse a Spotify link.";
 "⚠️ Could not parse a Spotify playlist link." = "⚠️ Could not parse a Spotify playlist link.";
 "Once" = "Once";
 "Daily" = "Daily";
@@ -28,6 +32,8 @@
 "Spotify Playlist" = "Spotify Playlist";
 "Spotify Playlist · %@" = "Spotify Playlist · %@";
 "No audio selected" = "No audio selected";
+"%d tracks" = "%d tracks";
+"No audio" = "No audio";
 "• Snoozed" = "• Snoozed";
 "Preview Sound" = "Preview Sound";
 "Edit Alarm" = "Edit Alarm";
@@ -43,3 +49,11 @@
 "About Music Alarm" = "About Music Alarm";
 "Hide Music Alarm" = "Hide Music Alarm";
 "Quit Music Alarm" = "Quit Music Alarm";
+"Local" = "Local";
+"Spotify" = "Spotify";
+"Playlist" = "Playlist";
+"Add Track" = "Add Track";
+"Tracks" = "Tracks";
+"No tracks yet. Add local files or Spotify links below." = "No tracks yet. Add local files or Spotify links below.";
+"Import & Add" = "Import & Add";
+"Add to Playlist" = "Add to Playlist";

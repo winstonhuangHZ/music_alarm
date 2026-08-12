@@ -18,8 +18,12 @@
 "Import Music…" = "استيراد الموسيقى…";
 "Cancel" = "إلغاء";
 "Save" = "حفظ";
+"Paste a Spotify playlist, track or album link" = "الصق رابط قائمة تشغيل أو أغنية أو ألبوم Spotify";
 "Paste a Spotify playlist link — URL or spotify:playlist:…" = "الصق رابط قائمة تشغيل Spotify — URL أو spotify:playlist:…";
 "✓ Valid playlist — will play in order." = "✓ قائمة تشغيل صالحة — سيتم تشغيلها بالترتيب.";
+"✓ Valid track — single song." = "✓ أغنية صالحة — أغنية واحدة.";
+"✓ Valid album — will play in order." = "✓ ألبوم صالح — سيتم تشغيله بالترتيب.";
+"⚠️ Could not parse a Spotify link." = "⚠️ تعذّر تحليل رابط Spotify.";
 "⚠️ Could not parse a Spotify playlist link." = "⚠️ تعذّر تحليل رابط قائمة تشغيل Spotify.";
 "Once" = "مرة واحدة";
 "Daily" = "يوميًا";
@@ -28,6 +32,8 @@
 "Spotify Playlist" = "قائمة تشغيل Spotify";
 "Spotify Playlist · %@" = "قائمة تشغيل Spotify · %@";
 "No audio selected" = "لم يتم تحديد صوت";
+"%d tracks" = "%d مسارات";
+"No audio" = "لا يوجد صوت";
 "• Snoozed" = "• مؤجل";
 "Preview Sound" = "معاينة الصوت";
 "Edit Alarm" = "تعديل المنبه";
@@ -43,3 +49,11 @@
 "About Music Alarm" = "حول Music Alarm";
 "Hide Music Alarm" = "إخفاء Music Alarm";
 "Quit Music Alarm" = "إنهاء Music Alarm";
+"Local" = "محلي";
+"Spotify" = "Spotify";
+"Playlist" = "قائمة التشغيل";
+"Add Track" = "إضافة مسار";
+"Tracks" = "المسارات";
+"No tracks yet. Add local files or Spotify links below." = "لا توجد مسارات بعد. أضف ملفات محلية أو روابط Spotify أدناه.";
+"Import & Add" = "استيراد وإضافة";
+"Add to Playlist" = "إضافة إلى قائمة التشغيل";

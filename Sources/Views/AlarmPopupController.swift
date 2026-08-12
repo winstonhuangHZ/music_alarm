@@ -18,10 +18,10 @@ final class AlarmPopupController {
 
         let contentView = AlarmPopupView(alarm: alarm, onSnooze: onSnooze, onStop: onStop)
         let hosting = NSHostingView(rootView: contentView)
-        hosting.frame = NSRect(x: 0, y: 0, width: 520, height: 340)
+        hosting.frame = NSRect(x: 0, y: 0, width: 524, height: 430)
 
         let panel = AlarmPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 340),
+            contentRect: NSRect(x: 0, y: 0, width: 524, height: 430),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
