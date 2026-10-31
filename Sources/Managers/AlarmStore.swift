@@ -2,7 +2,7 @@ import Foundation
 import AppKit
 import Combine
 
-/// A user-imported audio file (path is persisted; playback resolves it lazily).
+/// A user-imported audio file stored in the shared application data directory.
 struct ImportedAudio: Identifiable, Codable, Equatable {
     var id = UUID()
     var name: String
@@ -12,7 +12,8 @@ struct ImportedAudio: Identifiable, Codable, Equatable {
     var fileExists: Bool { FileManager.default.fileExists(atPath: urlString) }
 }
 
-/// Central data store: alarms + imported audio library, persisted in UserDefaults.
+/// Central data store: alarms + imported audio library shared across app
+/// versions and executable locations.
 final class AlarmStore: ObservableObject {
     @Published var alarms: [AlarmItem] {
         didSet { save() }
@@ -21,49 +22,96 @@ final class AlarmStore: ObservableObject {
         didSet { save() }
     }
 
-    private let alarmsKey = "MusicAlarm.alarms.v1"
-    private let audiosKey = "MusicAlarm.importedAudios.v1"
+    private let storage: SharedAlarmStorage
+    private let legacyAlarmsKey = "MusicAlarm.alarms.v1"
+    private let legacyAudiosKey = "MusicAlarm.importedAudios.v1"
+    private var alarmsNeedRepair = false
+    private var importedAudiosNeedRepair = false
 
-    init() {
-        var loadedAlarms: [AlarmItem] = []
-        if let data = UserDefaults.standard.data(forKey: alarmsKey),
-           let decoded = try? JSONDecoder().decode([AlarmItem].self, from: data) {
-            loadedAlarms = decoded
-        }
-        // Migrate v2.0 single-audio data → v2.1 tracks array
-        for i in loadedAlarms.indices {
-            loadedAlarms[i].migrateIfNeeded()
-        }
-        alarms = loadedAlarms
+    init(storage: SharedAlarmStorage = .shared) {
+        self.storage = storage
 
-        if let data = UserDefaults.standard.data(forKey: audiosKey),
-           let decoded = try? JSONDecoder().decode([ImportedAudio].self, from: data) {
-            importedAudios = decoded
+        if storage.containsSharedData() {
+            let loadedAlarms = storage.loadResult([AlarmItem].self, from: storage.alarmsURL)
+            let loadedAudios = storage.loadResult([ImportedAudio].self, from: storage.importedAudiosURL)
+
+            alarmsNeedRepair = loadedAlarms.status == .invalid
+            importedAudiosNeedRepair = loadedAudios.status == .invalid
+            alarms = loadedAlarms.value ?? []
+            importedAudios = loadedAudios.value ?? []
+
+            migrateLoadedData()
+
+            // A valid backup can repair a corrupted primary file. Never write an
+            // empty array merely because a file was unreadable.
+            if loadedAlarms.status == .recoveredFromBackup, let value = loadedAlarms.value {
+                _ = storage.save(value, to: storage.alarmsURL)
+                alarmsNeedRepair = false
+            }
+            if loadedAudios.status == .recoveredFromBackup, let value = loadedAudios.value {
+                _ = storage.save(value, to: storage.importedAudiosURL)
+                importedAudiosNeedRepair = false
+            }
         } else {
-            importedAudios = []
+            let legacyAlarms = Self.loadLegacy([AlarmItem].self, key: legacyAlarmsKey)
+            var loadedAlarms = legacyAlarms.value ?? []
+            for i in loadedAlarms.indices {
+                loadedAlarms[i].migrateIfNeeded()
+            }
+            var loadedAudios = Self.loadLegacy([ImportedAudio].self, key: legacyAudiosKey).value ?? []
+            storage.migrateLegacyAudio(alarms: &loadedAlarms, importedAudios: &loadedAudios)
+            alarms = loadedAlarms
+            importedAudios = loadedAudios
+
+            // Do not replace unreadable legacy data with empty shared files.
+            if !legacyAlarms.hadData || legacyAlarms.value != nil {
+                save()
+            } else {
+                NSLog("AlarmStore: preserved unreadable legacy alarm data; no empty migration was written")
+            }
         }
     }
 
     func save() {
-        if let data = try? JSONEncoder().encode(alarms) {
-            UserDefaults.standard.set(data, forKey: alarmsKey)
+        if !alarmsNeedRepair {
+            _ = storage.save(alarms, to: storage.alarmsURL)
+        } else {
+            NSLog("AlarmStore: skipped saving unreadable alarms until the user changes the alarm list")
         }
-        if let data = try? JSONEncoder().encode(importedAudios) {
-            UserDefaults.standard.set(data, forKey: audiosKey)
+        if !importedAudiosNeedRepair {
+            _ = storage.save(importedAudios, to: storage.importedAudiosURL)
+        } else {
+            NSLog("AlarmStore: skipped saving unreadable audio library until the user changes it")
         }
-        // Force a synchronous flush to disk so alarms / imported music survive
-        // an immediate app quit or crash right after a mutation.
-        UserDefaults.standard.synchronize()
+    }
+
+    /// Reloads the shared files so separate app copies can converge when one
+    /// of them changes the alarm list. Invalid files are left untouched.
+    func reloadFromSharedStorage() {
+        let loadedAlarms = storage.loadResult([AlarmItem].self, from: storage.alarmsURL)
+        let loadedAudios = storage.loadResult([ImportedAudio].self, from: storage.importedAudiosURL)
+
+        if let value = loadedAlarms.value {
+            alarmsNeedRepair = false
+            alarms = value
+        }
+        if let value = loadedAudios.value {
+            importedAudiosNeedRepair = false
+            importedAudios = value
+        }
+        migrateLoadedData()
     }
 
     // MARK: - Alarms
 
     func addAlarm(_ alarm: AlarmItem) {
         alarms.append(alarm)
+        persistAlarmsAfterUserChange()
     }
 
     func removeAlarm(_ alarm: AlarmItem) {
         alarms.removeAll { $0.id == alarm.id }
+        persistAlarmsAfterUserChange()
     }
 
     /// Replaces an existing alarm in-place with an edited copy.
@@ -74,6 +122,7 @@ final class AlarmStore: ObservableObject {
         updated.snoozeUntil = alarms[idx].snoozeUntil
         updated.lastFiredKey = alarms[idx].lastFiredKey
         alarms[idx] = updated
+        persistAlarmsAfterUserChange()
     }
 
     func toggleEnabled(id: UUID, enabled: Bool) {
@@ -82,6 +131,7 @@ final class AlarmStore: ObservableObject {
         if !enabled {
             alarms[idx].snoozeUntil = nil // cancels a pending snooze
         }
+        persistAlarmsAfterUserChange()
     }
 
     func markFired(at index: Int, now: Date) {
@@ -90,6 +140,7 @@ final class AlarmStore: ObservableObject {
         if alarms[index].repeatType == .once {
             alarms[index].isEnabled = false
         }
+        persistAlarmsAfterUserChange()
     }
 
     func snooze(_ alarm: AlarmItem, minutes: Int = 5) {
@@ -97,6 +148,7 @@ final class AlarmStore: ObservableObject {
         alarms[idx].snoozeUntil = Date().addingTimeInterval(TimeInterval(minutes * 60))
         alarms[idx].lastFiredKey = ""
         alarms[idx].isEnabled = true // re-armed so the snoozed alarm can fire
+        persistAlarmsAfterUserChange()
     }
 
     func stopAlarm(_ alarm: AlarmItem) {
@@ -105,6 +157,7 @@ final class AlarmStore: ObservableObject {
         if alarms[idx].repeatType == .once {
             alarms[idx].isEnabled = false
         }
+        persistAlarmsAfterUserChange()
     }
 
     /// The soonest enabled alarm and its fire date.
@@ -150,15 +203,62 @@ final class AlarmStore: ObservableObject {
     @discardableResult
     func addImportedAudio(url: URL) -> ImportedAudio? {
         let name = url.deletingPathExtension().lastPathComponent
-        guard !importedAudios.contains(where: { $0.urlString == url.path }) else {
-            return importedAudios.first(where: { $0.urlString == url.path })
+        let audioID = UUID()
+        do {
+            let sharedURL = try storage.copyAudio(from: url, audioID: audioID)
+            let audio = ImportedAudio(id: audioID, name: name, urlString: sharedURL.path)
+            importedAudios.append(audio)
+            persistImportedAudiosAfterUserChange()
+            return audio
+        } catch {
+            NSLog("AlarmStore: failed to copy imported audio %@: %@", url.path, error.localizedDescription)
+            return nil
         }
-        let audio = ImportedAudio(name: name, urlString: url.path)
-        importedAudios.append(audio)
-        return audio
     }
 
     func removeAudio(id: UUID) {
         importedAudios.removeAll { $0.id == id }
+        persistImportedAudiosAfterUserChange()
+    }
+
+    private func migrateLoadedData() {
+        var migratedAlarms = alarms
+        for index in migratedAlarms.indices {
+            migratedAlarms[index].migrateIfNeeded()
+        }
+        var migratedAudios = importedAudios
+        storage.migrateLegacyAudio(alarms: &migratedAlarms, importedAudios: &migratedAudios)
+
+        if migratedAlarms != alarms {
+            alarms = migratedAlarms
+            if !alarmsNeedRepair { _ = storage.save(alarms, to: storage.alarmsURL) }
+        }
+        if migratedAudios != importedAudios {
+            importedAudios = migratedAudios
+            if !importedAudiosNeedRepair { _ = storage.save(importedAudios, to: storage.importedAudiosURL) }
+        }
+    }
+
+    private func persistAlarmsAfterUserChange() {
+        alarmsNeedRepair = false
+        _ = storage.save(alarms, to: storage.alarmsURL)
+    }
+
+    private func persistImportedAudiosAfterUserChange() {
+        importedAudiosNeedRepair = false
+        _ = storage.save(importedAudios, to: storage.importedAudiosURL)
+    }
+
+    private static func loadLegacy<T: Decodable>(_ type: T.Type, key: String)
+        -> (value: T?, hadData: Bool) {
+        guard let data = UserDefaults.standard.data(forKey: key) else {
+            return (nil, false)
+        }
+        do {
+            return (try JSONDecoder().decode(type, from: data), true)
+        } catch {
+            NSLog("AlarmStore: failed to decode legacy key %@: %@", key, error.localizedDescription)
+            return (nil, true)
+        }
     }
 }

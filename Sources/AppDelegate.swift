@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var audioManager: AudioManager!
     private var engine: AlarmEngine!
     private var languageManager = LanguageManager.shared
+    private var sharedStorageObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let store = AlarmStore()
@@ -18,6 +19,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.store = store
         self.audioManager = audio
         self.engine = engine
+
+        // A second copy of the app may update the shared JSON while this copy
+        // is inactive. Reload when macOS brings this process back to the front
+        // so all app locations converge on the same alarm list.
+        sharedStorageObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak store] _ in
+            store?.reloadFromSharedStorage()
+        }
 
         // Wire sequential playlist callback: when a local track finishes,
         // advance to the next track in the playlist.
@@ -49,6 +61,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        if let observer = sharedStorageObserver {
+            NotificationCenter.default.removeObserver(observer)
+            sharedStorageObserver = nil
+        }
         engine?.stop()
         store?.save() // flush any pending alarm/audio changes to disk before exiting
     }

@@ -10,7 +10,7 @@ enum RepeatType: String, Codable, CaseIterable, Identifiable, Equatable, Hashabl
     var title: String { L(rawValue) }
 }
 
-/// A single alarm. Persisted with JSON in UserDefaults.
+/// A single alarm. Persisted with JSON in the shared Application Support store.
 struct AlarmItem: Identifiable, Codable, Equatable {
     var id = UUID()
     var hour: Int = 7
@@ -35,6 +35,32 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     // ---- runtime state ----
     var snoozeUntil: Date?
     var lastFiredKey: String = ""
+
+    private enum CodingKeys: String, CodingKey {
+        case id, hour, minute, repeatType, isEnabled, tracks
+        case audioName, audioPath, soundSource, spotifyPlaylistURL
+        case snoozeUntil, lastFiredKey
+    }
+
+    init() {}
+
+    /// Decode current and legacy records without requiring newly introduced
+    /// fields to exist in older JSON data.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        hour = try c.decodeIfPresent(Int.self, forKey: .hour) ?? 7
+        minute = try c.decodeIfPresent(Int.self, forKey: .minute) ?? 0
+        repeatType = try c.decodeIfPresent(RepeatType.self, forKey: .repeatType) ?? .once
+        isEnabled = try c.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        tracks = try c.decodeIfPresent([AudioTrack].self, forKey: .tracks) ?? []
+        audioName = try c.decodeIfPresent(String.self, forKey: .audioName)
+        audioPath = try c.decodeIfPresent(String.self, forKey: .audioPath)
+        soundSource = try c.decodeIfPresent(String.self, forKey: .soundSource)
+        spotifyPlaylistURL = try c.decodeIfPresent(String.self, forKey: .spotifyPlaylistURL)
+        snoozeUntil = try c.decodeIfPresent(Date.self, forKey: .snoozeUntil)
+        lastFiredKey = try c.decodeIfPresent(String.self, forKey: .lastFiredKey) ?? ""
+    }
 
     // MARK: - Display
 
@@ -105,8 +131,9 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     /// populate the v2.1 tracks array from old v2.0 single-audio data.
     mutating func migrateIfNeeded() {
         guard tracks.isEmpty else { return }
-        let source = soundSource ?? "local"
-        if source == "spotify", let link = spotifyPlaylistURL, !link.isEmpty {
+        let source = (soundSource ?? "local").lowercased()
+        if (source == "spotify" || source == "spotify playlist"),
+           let link = spotifyPlaylistURL, !link.isEmpty {
             tracks = [.spotify(link: link)]
         } else if let path = audioPath, let name = audioName, !path.isEmpty {
             tracks = [.local(name: name, path: path, audioID: id)]
