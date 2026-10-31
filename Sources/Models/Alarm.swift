@@ -10,6 +10,13 @@ enum RepeatType: String, Codable, CaseIterable, Identifiable, Equatable, Hashabl
     var title: String { L(rawValue) }
 }
 
+enum WakeConfirmationState: String, Codable, Equatable {
+    case none = "None"
+    case pending = "Wake-up pending"
+    case confirmed = "Wake-up confirmed"
+    case stoppedWithoutConfirmation = "Wake-up not confirmed"
+}
+
 /// A single alarm. Persisted with JSON in the shared Application Support store.
 struct AlarmItem: Identifiable, Codable, Equatable {
     var id = UUID()
@@ -17,6 +24,8 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     var minute: Int = 0
     var repeatType: RepeatType = .once
     var isEnabled: Bool = true
+    var requiresWakeConfirmation: Bool = false
+    var wakeConfirmationState: WakeConfirmationState = .none
 
     // ---- v2.1 playlist model ----
     /// Ordered list of local audio tracks.
@@ -40,7 +49,9 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     var lastFiredKey: String = ""
 
     private enum CodingKeys: String, CodingKey {
-        case id, hour, minute, repeatType, isEnabled, tracks, audioNeedsSelection
+        case id, hour, minute, repeatType, isEnabled
+        case requiresWakeConfirmation, wakeConfirmationState
+        case tracks, audioNeedsSelection
         case audioName, audioPath, soundSource, spotifyPlaylistURL
         case snoozeUntil, lastFiredKey
     }
@@ -56,6 +67,8 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         minute = try c.decodeIfPresent(Int.self, forKey: .minute) ?? 0
         repeatType = try c.decodeIfPresent(RepeatType.self, forKey: .repeatType) ?? .once
         isEnabled = try c.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        requiresWakeConfirmation = try c.decodeIfPresent(Bool.self, forKey: .requiresWakeConfirmation) ?? false
+        wakeConfirmationState = try c.decodeIfPresent(WakeConfirmationState.self, forKey: .wakeConfirmationState) ?? .none
         tracks = try c.decodeIfPresent([AudioTrack].self, forKey: .tracks) ?? []
         audioNeedsSelection = try c.decodeIfPresent(Bool.self, forKey: .audioNeedsSelection) ?? false
         audioName = try c.decodeIfPresent(String.self, forKey: .audioName)

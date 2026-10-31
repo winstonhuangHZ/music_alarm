@@ -107,7 +107,8 @@ final class AlarmEngine: ObservableObject {
         AlarmPopupController.show(
             alarm: alarm,
             onSnooze: { [weak self] _ in self?.snoozeRinging() },
-            onStop: { [weak self] _ in self?.stopRinging() }
+            onStop: { [weak self] _ in self?.stopRinging() },
+            onConfirmWake: { [weak self] _ in self?.confirmWake() }
         )
     }
 
@@ -168,6 +169,13 @@ final class AlarmEngine: ObservableObject {
     func snoozeRinging(minutes: Int = 5) {
         guard let alarm = ringingAlarm else { return }
         store.snooze(alarm, minutes: minutes)
+        audioManager.stop()
+        finishCurrent()
+    }
+
+    func confirmWake() {
+        guard let alarm = ringingAlarm else { return }
+        store.confirmWake(id: alarm.id)
         audioManager.stop()
         finishCurrent()
     }

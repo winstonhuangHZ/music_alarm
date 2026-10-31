@@ -54,3 +54,10 @@
 "Choose local audio" = "Выберите локальное аудио";
 "Audio unavailable" = "Аудио недоступно";
 "This alarm needs a local audio file. Select one below." = "Для этого будильника нужен локальный аудиофайл. Выберите его ниже.";
+"Require wake-up confirmation" = "Требовать подтверждение пробуждения";
+"You can stop the sound, but the alarm stays unconfirmed until you say you are really awake." = "Звук можно остановить, но будильник останется неподтверждённым, пока вы не подтвердите, что действительно проснулись.";
+"I am really awake" = "Я действительно проснулся";
+"Confirm wake-up" = "Подтвердить пробуждение";
+"• Wake-up pending" = "• Ожидается подтверждение";
+"• Wake-up confirmed" = "• Пробуждение подтверждено";
+"• Wake-up not confirmed" = "• Пробуждение не подтверждено";

@@ -54,3 +54,10 @@
 "Choose local audio" = "请选择本地音频";
 "Audio unavailable" = "音频不可用";
 "This alarm needs a local audio file. Select one below." = "这个闹钟需要本地音频，请在下方选择。";
+"Require wake-up confirmation" = "需要起床确认";
+"You can stop the sound, but the alarm stays unconfirmed until you say you are really awake." = "你可以停止声音，但在确认自己真正起床前，本次闹钟会保持未确认状态。";
+"I am really awake" = "我已经真正起床";
+"Confirm wake-up" = "确认起床";
+"• Wake-up pending" = "• 待确认起床";
+"• Wake-up confirmed" = "• 已确认起床";
+"• Wake-up not confirmed" = "• 未确认起床";

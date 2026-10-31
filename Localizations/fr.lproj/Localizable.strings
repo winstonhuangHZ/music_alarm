@@ -54,3 +54,10 @@
 "Choose local audio" = "Choisir un fichier audio local";
 "Audio unavailable" = "Audio indisponible";
 "This alarm needs a local audio file. Select one below." = "Cette alarme nécessite un fichier audio local. Sélectionnez-en un ci-dessous.";
+"Require wake-up confirmation" = "Exiger une confirmation de réveil";
+"You can stop the sound, but the alarm stays unconfirmed until you say you are really awake." = "Vous pouvez arrêter le son, mais l’alarme reste non confirmée jusqu’à votre confirmation de réveil.";
+"I am really awake" = "Je suis vraiment réveillé";
+"Confirm wake-up" = "Confirmer le réveil";
+"• Wake-up pending" = "• Réveil en attente";
+"• Wake-up confirmed" = "• Réveil confirmé";
+"• Wake-up not confirmed" = "• Réveil non confirmé";

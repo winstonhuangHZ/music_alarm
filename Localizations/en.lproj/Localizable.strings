@@ -54,3 +54,10 @@
 "Choose local audio" = "Choose local audio";
 "Audio unavailable" = "Audio unavailable";
 "This alarm needs a local audio file. Select one below." = "This alarm needs a local audio file. Select one below.";
+"Require wake-up confirmation" = "Require wake-up confirmation";
+"You can stop the sound, but the alarm stays unconfirmed until you say you are really awake." = "You can stop the sound, but the alarm stays unconfirmed until you say you are really awake.";
+"I am really awake" = "I am really awake";
+"Confirm wake-up" = "Confirm wake-up";
+"• Wake-up pending" = "• Wake-up pending";
+"• Wake-up confirmed" = "• Wake-up confirmed";
+"• Wake-up not confirmed" = "• Wake-up not confirmed";

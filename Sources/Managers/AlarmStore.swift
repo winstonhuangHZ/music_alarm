@@ -125,6 +125,7 @@ final class AlarmStore: ObservableObject {
         if scheduleChanged {
             updated.snoozeUntil = nil
             updated.lastFiredKey = ""
+            updated.wakeConfirmationState = .none
         } else {
             updated.snoozeUntil = old.snoozeUntil
             updated.lastFiredKey = old.lastFiredKey
@@ -154,7 +155,8 @@ final class AlarmStore: ObservableObject {
             alarms[index].lastFiredKey = AlarmTimeUtil.fireKey(for: occurrence)
         }
         alarms[index].snoozeUntil = nil
-        if alarms[index].repeatType == .once {
+        alarms[index].wakeConfirmationState = alarms[index].requiresWakeConfirmation ? .pending : .none
+        if alarms[index].repeatType == .once && !alarms[index].requiresWakeConfirmation {
             alarms[index].isEnabled = false
         }
         persistAlarmsAfterUserChange()
@@ -172,6 +174,24 @@ final class AlarmStore: ObservableObject {
     func stopAlarm(_ alarm: AlarmItem) {
         guard let idx = alarms.firstIndex(where: { $0.id == alarm.id }) else { return }
         alarms[idx].snoozeUntil = nil
+        if alarms[idx].requiresWakeConfirmation,
+           alarms[idx].wakeConfirmationState == .pending {
+            alarms[idx].wakeConfirmationState = .stoppedWithoutConfirmation
+            // Keep a one-shot alarm enabled until the user explicitly confirms
+            // the wake-up from the alarm row.
+            persistAlarmsAfterUserChange()
+            return
+        }
+        if alarms[idx].repeatType == .once {
+            alarms[idx].isEnabled = false
+        }
+        persistAlarmsAfterUserChange()
+    }
+
+    func confirmWake(id: UUID) {
+        guard let idx = alarms.firstIndex(where: { $0.id == id }),
+              alarms[idx].requiresWakeConfirmation else { return }
+        alarms[idx].wakeConfirmationState = .confirmed
         if alarms[idx].repeatType == .once {
             alarms[idx].isEnabled = false
         }

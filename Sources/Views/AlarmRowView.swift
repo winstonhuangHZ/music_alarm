@@ -27,6 +27,11 @@ struct AlarmRowView: View {
                             .font(.caption)
                             .foregroundColor(.orange)
                     }
+                    if alarm.requiresWakeConfirmation {
+                        Text(wakeConfirmationLabel)
+                            .font(.caption)
+                            .foregroundColor(wakeConfirmationColor)
+                    }
                 }
                 .foregroundColor(.secondary)
             }
@@ -48,6 +53,15 @@ struct AlarmRowView: View {
                     .font(.system(size: 14))
             }
             .buttonStyle(PlainButtonStyle())
+
+            if alarm.requiresWakeConfirmation && isAwaitingWakeConfirmation {
+                Button(action: { self.store.confirmWake(id: self.alarm.id) }) {
+                    Text(L("Confirm wake-up"))
+                        .font(.caption)
+                        .foregroundColor(.green)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
 
             Toggle(isOn: enabledBinding) {
                 Text("")
@@ -112,6 +126,28 @@ struct AlarmRowView: View {
         case .once: return "①"
         case .daily: return "↻"
         case .weekdays: return "⑤"
+        }
+    }
+
+    private var isAwaitingWakeConfirmation: Bool {
+        alarm.wakeConfirmationState == .pending
+            || alarm.wakeConfirmationState == .stoppedWithoutConfirmation
+    }
+
+    private var wakeConfirmationLabel: String {
+        switch alarm.wakeConfirmationState {
+        case .none: return ""
+        case .pending: return L("• Wake-up pending")
+        case .confirmed: return L("• Wake-up confirmed")
+        case .stoppedWithoutConfirmation: return L("• Wake-up not confirmed")
+        }
+    }
+
+    private var wakeConfirmationColor: Color {
+        switch alarm.wakeConfirmationState {
+        case .confirmed: return .green
+        case .pending, .stoppedWithoutConfirmation: return .orange
+        case .none: return .secondary
         }
     }
 }

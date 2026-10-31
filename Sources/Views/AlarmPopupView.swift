@@ -5,6 +5,7 @@ struct AlarmPopupView: View {
     let alarm: AlarmItem
     let onSnooze: (AlarmItem) -> Void
     let onStop: (AlarmItem) -> Void
+    let onConfirmWake: (AlarmItem) -> Void
 
     @State private var appeared = false
     @State private var pulse = false
@@ -121,7 +122,24 @@ struct AlarmPopupView: View {
     }
 
     private var actionButtons: some View {
-        HStack(spacing: 18) {
+        VStack(spacing: 10) {
+            if alarm.requiresWakeConfirmation {
+                Button(action: { self.onConfirmWake(self.alarm) }) {
+                    HStack(spacing: 8) {
+                        Text("✅")
+                        Text(L("I am really awake"))
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+                    .background(Color.green)
+                    .cornerRadius(9)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+
+            HStack(spacing: 18) {
             Button(action: { self.onSnooze(self.alarm) }) {
                 HStack(spacing: 8) {
                     Text("💤")
@@ -149,6 +167,7 @@ struct AlarmPopupView: View {
                 .cornerRadius(9)
             }
             .buttonStyle(PlainButtonStyle())
+            }
         }
         .opacity(appeared ? 1 : 0)
         .scaleEffect(appeared ? 1 : 0.9)

@@ -16,6 +16,7 @@ struct AddAlarmView: View {
     /// Selected local audio in the import picker.
     @State private var selectedAudioID: UUID?
     @State private var audioNeedsSelection = false
+    @State private var requiresWakeConfirmation = false
 
     init(alarm: AlarmItem? = nil) {
         self.editingAlarm = alarm
@@ -30,6 +31,7 @@ struct AddAlarmView: View {
             _repeatType = State(initialValue: alarm.repeatType)
             _tracks = State(initialValue: alarm.tracks)
             _audioNeedsSelection = State(initialValue: alarm.audioNeedsSelection)
+            _requiresWakeConfirmation = State(initialValue: alarm.requiresWakeConfirmation)
         } else {
             comps.hour = 7
             comps.minute = 0
@@ -57,6 +59,16 @@ struct AddAlarmView: View {
                     }
                 }
                 .pickerStyle(SegmentedPickerStyle())
+            }
+
+            VStack(alignment: .leading, spacing: 5) {
+                Toggle(isOn: $requiresWakeConfirmation) {
+                    Text(L("Require wake-up confirmation"))
+                        .font(.headline)
+                }
+                Text(L("You can stop the sound, but the alarm stays unconfirmed until you say you are really awake."))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
 
             playlistSection
@@ -274,6 +286,7 @@ struct AddAlarmView: View {
         alarm.repeatType = repeatType
         alarm.tracks = tracks
         alarm.audioNeedsSelection = false
+        alarm.requiresWakeConfirmation = requiresWakeConfirmation
 
         if editingAlarm != nil {
             store.updateAlarm(alarm)

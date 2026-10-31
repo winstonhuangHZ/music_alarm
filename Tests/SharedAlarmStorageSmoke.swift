@@ -27,6 +27,33 @@ struct SharedAlarmStorageSmoke {
         precondition(migrated.tracks.isEmpty)
         precondition(migrated.audioNeedsSelection)
 
+        let confirmationRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("music-alarm-confirmation-\(UUID().uuidString)", isDirectory: true)
+        let confirmationStorage = SharedAlarmStorage(rootURL: confirmationRoot)
+        defer { try? FileManager.default.removeItem(at: confirmationRoot) }
+        let confirmationStore = AlarmStore(storage: confirmationStorage)
+        var confirmationAlarm = AlarmItem()
+        confirmationAlarm.repeatType = .once
+        confirmationAlarm.requiresWakeConfirmation = true
+        confirmationStore.addAlarm(confirmationAlarm)
+        confirmationStore.markPlaybackStarted(id: confirmationAlarm.id,
+                                               occurrence: Date(),
+                                               isSnooze: false)
+        precondition(confirmationStore.alarms[0].isEnabled)
+        precondition(confirmationStore.alarms[0].wakeConfirmationState == .pending)
+        confirmationStore.stopAlarm(confirmationAlarm)
+        precondition(confirmationStore.alarms[0].wakeConfirmationState == .stoppedWithoutConfirmation)
+        confirmationStore.confirmWake(id: confirmationAlarm.id)
+        precondition(!confirmationStore.alarms[0].isEnabled)
+        precondition(confirmationStore.alarms[0].wakeConfirmationState == .confirmed)
+
+        let legacyAlarmJSON = """
+        [{"hour":7,"minute":0,"repeatType":"Once","isEnabled":true,"tracks":[]}]
+        """.data(using: .utf8)!
+        let legacyAlarm = try JSONDecoder().decode([AlarmItem].self, from: legacyAlarmJSON)[0]
+        precondition(!legacyAlarm.requiresWakeConfirmation)
+        precondition(legacyAlarm.wakeConfirmationState == .none)
+
         print("shared storage smoke test passed")
     }
 }
