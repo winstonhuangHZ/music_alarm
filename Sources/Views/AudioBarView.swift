@@ -61,7 +61,18 @@ struct AudioBarView: View {
             Text(audio.name)
                 .font(.caption)
                 .lineLimit(1)
+            if !audio.fileExists {
+                Text(L("Missing"))
+                    .font(.caption2)
+                    .foregroundColor(.orange)
+            }
             chipPlayButton(audio, playing: playing)
+            Button(action: { self.store.replaceAudio(id: audio.id) }) {
+                Text("↻")
+                    .font(.system(size: 14))
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help(L("Replace Audio"))
             chipRemoveButton(audio)
         }
         .padding(.horizontal, 12)

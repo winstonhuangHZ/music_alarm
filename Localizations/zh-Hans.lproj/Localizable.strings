@@ -61,3 +61,6 @@
 "• Wake-up pending" = "• 待确认起床";
 "• Wake-up confirmed" = "• 已确认起床";
 "• Wake-up not confirmed" = "• 未确认起床";
+"Missing" = "文件缺失";
+"Replace Audio" = "替换音频";
+"Replace" = "替换";

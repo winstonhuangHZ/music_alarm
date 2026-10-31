@@ -108,6 +108,26 @@ final class SharedAlarmStorage {
         return destination
     }
 
+    func replaceAudio(from sourceURL: URL, audioID: UUID) throws -> URL {
+        try prepareDirectories()
+        let ext = sourceURL.pathExtension.isEmpty ? "m4a" : sourceURL.pathExtension.lowercased()
+        let destination = audioDirectoryURL
+            .appendingPathComponent(audioID.uuidString)
+            .appendingPathExtension(ext)
+        if fileManager.fileExists(atPath: destination.path) {
+            try fileManager.removeItem(at: destination)
+        }
+        try fileManager.copyItem(at: sourceURL, to: destination)
+        return destination
+    }
+
+    func removeAudioFile(for audioID: UUID) {
+        guard let matches = try? fileManager.contentsOfDirectory(at: audioDirectoryURL,
+                                                                  includingPropertiesForKeys: nil),
+              let match = matches.first(where: { $0.deletingPathExtension().lastPathComponent == audioID.uuidString }) else { return }
+        try? fileManager.removeItem(at: match)
+    }
+
     /// Copies legacy absolute-path audio into shared storage and rewrites
     /// every matching local track to its new stable path.
     func migrateLegacyAudio(alarms: inout [AlarmItem], importedAudios: inout [ImportedAudio]) {

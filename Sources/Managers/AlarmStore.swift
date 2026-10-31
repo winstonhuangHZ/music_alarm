@@ -1,6 +1,7 @@
 import Foundation
 import AppKit
 import Combine
+import AVFoundation
 
 /// A user-imported audio file stored in the shared application data directory.
 struct ImportedAudio: Identifiable, Codable, Equatable {
@@ -251,6 +252,13 @@ final class AlarmStore: ObservableObject {
     @discardableResult
     func addImportedAudio(url: URL) -> ImportedAudio? {
         let name = url.deletingPathExtension().lastPathComponent
+        guard isPlayableAudio(url: url) else {
+            NSLog("AlarmStore: rejected audio that AVAudioPlayer cannot decode: %@", url.path)
+            return nil
+        }
+        if let existing = importedAudios.first(where: { sameFile($0.url, url) }) {
+            return existing
+        }
         let audioID = UUID()
         do {
             let sharedURL = try storage.copyAudio(from: url, audioID: audioID)
@@ -266,7 +274,56 @@ final class AlarmStore: ObservableObject {
 
     func removeAudio(id: UUID) {
         importedAudios.removeAll { $0.id == id }
+        for index in alarms.indices {
+            let originalCount = alarms[index].tracks.count
+            alarms[index].tracks.removeAll {
+                if case .local(_, _, let audioID) = $0 { return audioID == id }
+                return false
+            }
+            if alarms[index].tracks.count != originalCount {
+                alarms[index].audioNeedsSelection = true
+            }
+        }
+        storage.removeAudioFile(for: id)
+        persistAlarmsAfterUserChange()
         persistImportedAudiosAfterUserChange()
+    }
+
+    /// Replaces the shared copy while keeping the stable audio ID referenced by
+    /// existing alarms.
+    @discardableResult
+    func replaceAudio(id: UUID) -> ImportedAudio? {
+        guard let index = importedAudios.firstIndex(where: { $0.id == id }) else { return nil }
+        let panel = NSOpenPanel()
+        panel.title = L("Replace Audio")
+        panel.prompt = L("Replace")
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedFileTypes = musicFileTypes
+        guard panel.runModal() == .OK, let sourceURL = panel.url,
+              isPlayableAudio(url: sourceURL) else { return nil }
+        do {
+            let sharedURL = try storage.replaceAudio(from: sourceURL, audioID: id)
+            importedAudios[index].name = sourceURL.deletingPathExtension().lastPathComponent
+            importedAudios[index].urlString = sharedURL.path
+            for alarmIndex in alarms.indices {
+                for trackIndex in alarms[alarmIndex].tracks.indices {
+                    if case .local(_, _, let audioID) = alarms[alarmIndex].tracks[trackIndex], audioID == id {
+                        alarms[alarmIndex].tracks[trackIndex] = .local(name: importedAudios[index].name,
+                                                                       path: sharedURL.path,
+                                                                       audioID: audioID)
+                        alarms[alarmIndex].audioNeedsSelection = false
+                    }
+                }
+            }
+            persistAlarmsAfterUserChange()
+            persistImportedAudiosAfterUserChange()
+            return importedAudios[index]
+        } catch {
+            NSLog("AlarmStore: failed to replace audio %@: %@", sourceURL.path, error.localizedDescription)
+            return nil
+        }
     }
 
     private func migrateLoadedData() {
@@ -295,6 +352,20 @@ final class AlarmStore: ObservableObject {
     private func persistImportedAudiosAfterUserChange() {
         importedAudiosNeedRepair = false
         _ = storage.save(importedAudios, to: storage.importedAudiosURL)
+    }
+
+    private func isPlayableAudio(url: URL) -> Bool {
+        guard FileManager.default.fileExists(atPath: url.path),
+              let player = try? AVAudioPlayer(contentsOf: url) else { return false }
+        return player.duration > 0
+    }
+
+    private func sameFile(_ lhs: URL, _ rhs: URL) -> Bool {
+        if lhs.standardizedFileURL == rhs.standardizedFileURL { return true }
+        guard let left = try? lhs.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey]),
+              let right = try? rhs.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey]) else { return false }
+        return left.fileSize == right.fileSize
+            && left.contentModificationDate == right.contentModificationDate
     }
 
     private static func loadLegacy<T: Decodable>(_ type: T.Type, key: String)

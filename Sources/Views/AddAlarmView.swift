@@ -227,6 +227,11 @@ struct AddAlarmView: View {
                             .frame(width: 16)
                         Text(audio.name)
                             .lineLimit(1)
+                        if !audio.fileExists {
+                            Text(L("Missing"))
+                                .font(.caption2)
+                                .foregroundColor(.orange)
+                        }
                         Spacer()
                     }
                     .padding(.horizontal, 12)

@@ -54,6 +54,21 @@ struct SharedAlarmStorageSmoke {
         precondition(!legacyAlarm.requiresWakeConfirmation)
         precondition(legacyAlarm.wakeConfirmationState == .none)
 
+        let libraryRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("music-alarm-library-\(UUID().uuidString)", isDirectory: true)
+        let libraryStorage = SharedAlarmStorage(rootURL: libraryRoot)
+        defer { try? FileManager.default.removeItem(at: libraryRoot) }
+        let libraryStore = AlarmStore(storage: libraryStorage)
+        let audioID = UUID()
+        libraryStore.importedAudios = [ImportedAudio(id: audioID, name: "Morning", urlString: "/missing/Morning.m4a")]
+        var linkedAlarm = AlarmItem()
+        linkedAlarm.tracks = [.local(name: "Morning", path: "/missing/Morning.m4a", audioID: audioID)]
+        libraryStore.addAlarm(linkedAlarm)
+        libraryStore.removeAudio(id: audioID)
+        precondition(libraryStore.importedAudios.isEmpty)
+        precondition(libraryStore.alarms[0].tracks.isEmpty)
+        precondition(libraryStore.alarms[0].audioNeedsSelection)
+
         print("shared storage smoke test passed")
     }
 }
