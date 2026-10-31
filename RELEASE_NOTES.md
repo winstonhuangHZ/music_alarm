@@ -1,9 +1,10 @@
-# Music Alarm v2.5.0 - unreleased
+# Music Alarm v2.7.0 - unreleased
 
-## 新增
+## 构建与发布安全
 
-- 可选的“我已经真正起床”确认状态。
-- 确认开启时，闹钟区分待确认、未确认和已确认。
-- 停止声音不会伪装成已完成，用户可以从主列表继续确认。
+- 版本号统一从 `VERSION` 读取。
+- 默认构建和 CI 强制生成 arm64 + x86_64 universal binary。
+- 构建、签名、DMG 新鲜度和 commit 来源都有明确校验。
+- Actions 固定到 commit SHA，并移除自动 Release job。
 
-共享存储、可靠调度、本地音频和旧数据迁移继续保留。当前仅更新开发分支和版本文件，不创建 GitHub Release。
+本阶段只更新开发分支、版本文件和构建配置，不创建 GitHub Release。

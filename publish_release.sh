@@ -1,20 +1,19 @@
 #!/usr/bin/env bash
-# Publish a GitHub Release for Music Alarm (main version) using the REST API.
+# Publish a GitHub Release for Music Alarm using the GitHub CLI.
 #
-# Creates release tag v2.0.0 (pushed if needed) and uploads:
+# Creates a release tag from VERSION (pushed if needed) and uploads:
 #   - dist/MusicAlarm.dmg   (universal: Intel + Apple Silicon)
 #
-# Auth (first one wins):
-#   1. $GH_TOKEN environment variable
-#   2. ./.gh_token file (plain token; git-ignored, never committed)
-#   3. `gh auth token` (if the gh CLI is installed & logged in)
+# Authentication is provided by `gh auth login` or the GH_TOKEN environment
+# variable. Tokens are never read from files or passed to curl arguments.
 #
 # Usage:
 #   ./publish_release.sh
 set -euo pipefail
 
-TAG="${TAG:-v2.0.0}"
-RELEASE_NAME="${RELEASE_NAME:-Music Alarm v2.0.0}"
+VERSION="$(tr -d '[:space:]' < VERSION)"
+TAG="${TAG:-v$VERSION}"
+RELEASE_NAME="${RELEASE_NAME:-Music Alarm $VERSION}"
 BODY_FILE="RELEASE_NOTES.md"
 ASSETS=("dist/MusicAlarm.dmg")
 
@@ -28,19 +27,11 @@ REPO="$(echo "$REMOTE_URL" | sed -E 's#https://github.com/([^/]+/[^/]+)(\.git)?$
 [ -n "$REPO" ] || fail "Could not determine GitHub repo from remote.origin.url"
 info "Repository: $REPO"
 
-# ---- Resolve token ----------------------------------------------------------
-TOKEN="${GH_TOKEN:-}"
-if [ -z "$TOKEN" ] && [ -f ".gh_token" ]; then
-  TOKEN="$(tr -d '[:space:]' < .gh_token)"
-fi
-if [ -z "$TOKEN" ] && command -v gh >/dev/null 2>&1; then
-  TOKEN="$(gh auth token 2>/dev/null || true)"
-fi
-[ -n "$TOKEN" ] || fail "No GitHub token found. Run: export GH_TOKEN=xxx  (or create a .gh_token file)"
+command -v gh >/dev/null 2>&1 || fail "gh CLI is required; authenticate with gh auth login."
+gh auth status >/dev/null 2>&1 || fail "GitHub CLI is not authenticated. Run gh auth login."
 
-API="https://api.github.com/repos/$REPO"
-AUTH="Authorization: Bearer $TOKEN"
-ACCEPT="Accept: application/vnd.github+json"
+git diff --quiet && [ -z "$(git status --porcelain)" ] || fail "Working tree has uncommitted changes."
+HEAD_SHA="$(git rev-parse HEAD)"
 
 # ---- Ensure the tag exists on the remote ------------------------------------
 info "Ensuring tag $TAG exists on remote..."
@@ -55,31 +46,18 @@ for a in "${ASSETS[@]}"; do
   [ -f "$a" ] || fail "Missing asset: $a"
 done
 
-# ---- Create or reuse the release ---------------------------------------------
-info "Creating release $TAG ..."
-BODY="$(cat "$BODY_FILE")"
-CREATE_JSON="$(jq -n --arg tag "$TAG" --arg name "$RELEASE_NAME" --arg body "$BODY" \
-  '{tag_name:$tag, name:$name, body:$body, draft:false, prerelease:false}')"
+BUILD_INFO="dist/MusicAlarm.app/Contents/Resources/MusicAlarm.build-info"
+[ -f "$BUILD_INFO" ] || fail "Build metadata missing; rebuild before publishing."
+[ "$(sed -n 's/^version=//p' "$BUILD_INFO")" = "$VERSION" ] \
+  || fail "DMG was not built from VERSION=$VERSION."
+[ "$(sed -n 's/^commit=//p' "$BUILD_INFO")" = "$HEAD_SHA" ] \
+  || fail "DMG was not built from the current commit."
 
-CREATE_RESPONSE="$(curl -fsS -X POST -H "$AUTH" -H "$ACCEPT" -H "Content-Type: application/json" \
-  -d "$CREATE_JSON" "$API/releases" 2>/dev/null || true)"
-RELEASE_ID="$(echo "$CREATE_RESPONSE" | jq -r '.id // empty')"
-if [ -z "$RELEASE_ID" ]; then
-  echo "   Release may already exist; fetching existing..."
-  RELEASE_ID="$(curl -fsS -H "$AUTH" -H "$ACCEPT" "$API/releases/tags/$TAG" | jq -r '.id // empty')"
-fi
-[ -n "$RELEASE_ID" ] || fail "Could not create/find the release for tag $TAG"
+TAG_SHA="$(git rev-list -n 1 "$TAG" 2>/dev/null || true)"
+[ "$TAG_SHA" = "$HEAD_SHA" ] || fail "Tag $TAG does not point at HEAD."
 
-# ---- Upload assets -------------------------------------------------------------
-for a in "${ASSETS[@]}"; do
-  NAME="$(basename "$a")"
-  info "Uploading $NAME ..."
-  curl -fsS -X POST -H "$AUTH" -H "$ACCEPT" -H "Content-Type: application/octet-stream" \
-    --data-binary "@$a" \
-    "$API/releases/$RELEASE_ID/assets?name=$NAME" >/dev/null \
-    || fail "Failed to upload $NAME"
-  echo "   Uploaded $NAME"
-done
+info "Creating or updating release $TAG ..."
+gh release create "$TAG" "${ASSETS[@]}" --title "$RELEASE_NAME" --notes-file "$BODY_FILE" --verify-tag
 
 echo ""
 echo -e "${GREEN}Release published!${NC}"

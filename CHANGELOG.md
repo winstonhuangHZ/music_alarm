@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.7.0 - unreleased
+
+### 构建与发布安全
+
+- 版本统一从 `VERSION` 读取，并写入 app bundle 构建元数据。
+- 默认和 CI 构建强制包含 `arm64` 与 `x86_64`。
+- 配置签名身份后签名失败直接终止；正式签名模式不允许缺少身份。
+- DMG 打包检查版本、构建 commit 与当前源码一致。
+- GitHub Actions 固定到 commit SHA，job 使用最小读取权限。
+- 普通 CI 不再自动创建 GitHub Release；发布脚本改用 `gh` 认证并检查 clean tree、tag 和构建来源。
+
 ## 2.6.0 - unreleased
 
 ### 本地音频库
