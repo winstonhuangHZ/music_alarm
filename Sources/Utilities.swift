@@ -16,4 +16,9 @@ enum AlarmTimeUtil {
     static func fireKey(for date: Date) -> String {
         fireFormatter.string(from: date)
     }
+
+    /// A short catch-up window prevents a stale alarm from firing days later,
+    /// while still allowing a sleeping Mac or a late app wake-up to recover a
+    /// missed occurrence.
+    static let missedAlarmWindow: TimeInterval = 2 * 60 * 60
 }

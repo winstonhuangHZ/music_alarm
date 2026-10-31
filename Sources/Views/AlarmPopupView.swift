@@ -62,7 +62,7 @@ struct AlarmPopupView: View {
     }
 
     /// The playlist section: a source summary and the ordered list of tracks
-    /// (local + Spotify, freely mixable) that the alarm plays sequentially.
+    /// local that the alarm plays sequentially.
     /// Tracks are numbered with their icon and display name; the first track
     /// carries a "now playing" marker because `AlarmEngine` starts there.
     private var trackSection: some View {

@@ -19,8 +19,11 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     var isEnabled: Bool = true
 
     // ---- v2.1 playlist model ----
-    /// Ordered list of audio tracks for this alarm (local + Spotify links mixed).
+    /// Ordered list of local audio tracks.
     var tracks: [AudioTrack] = []
+
+    /// Set when an older external audio record was migrated away.
+    var audioNeedsSelection: Bool = false
 
     // ---- v2.0 single-audio fields (kept for backwards compatibility) ----
     var audioName: String?
@@ -37,7 +40,7 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     var lastFiredKey: String = ""
 
     private enum CodingKeys: String, CodingKey {
-        case id, hour, minute, repeatType, isEnabled, tracks
+        case id, hour, minute, repeatType, isEnabled, tracks, audioNeedsSelection
         case audioName, audioPath, soundSource, spotifyPlaylistURL
         case snoozeUntil, lastFiredKey
     }
@@ -54,6 +57,7 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         repeatType = try c.decodeIfPresent(RepeatType.self, forKey: .repeatType) ?? .once
         isEnabled = try c.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
         tracks = try c.decodeIfPresent([AudioTrack].self, forKey: .tracks) ?? []
+        audioNeedsSelection = try c.decodeIfPresent(Bool.self, forKey: .audioNeedsSelection) ?? false
         audioName = try c.decodeIfPresent(String.self, forKey: .audioName)
         audioPath = try c.decodeIfPresent(String.self, forKey: .audioPath)
         soundSource = try c.decodeIfPresent(String.self, forKey: .soundSource)
@@ -85,7 +89,7 @@ struct AlarmItem: Identifiable, Codable, Equatable {
 
     /// Compact summary shown in the alarm row.
     var audioDisplayName: String {
-        if tracks.isEmpty { return L("No audio selected") }
+        if tracks.isEmpty { return audioNeedsSelection ? L("Choose local audio") : L("No audio selected") }
         if tracks.count == 1 { return tracks[0].displayName }
         return String(format: L("%d tracks"), tracks.count)
     }
@@ -93,10 +97,7 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     /// Count of tracks grouped by source for display.
     var sourceSummary: String {
         let local = tracks.filter { if case .local = $0 { return true }; return false }.count
-        let spotify = tracks.count - local
-        if local > 0 && spotify > 0 { return "🎵\(local) 🎧\(spotify)" }
         if local > 0 { return "🎵 \(local)" }
-        if spotify > 0 { return "🎧 \(spotify)" }
         return L("No audio")
     }
 
@@ -167,11 +168,22 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     /// Call on first decode if `tracks` is empty but legacy fields exist, to
     /// populate the v2.1 tracks array from old v2.0 single-audio data.
     mutating func migrateIfNeeded() {
+        if tracks.contains(where: {
+            if case .unavailable = $0 { return true }
+            return false
+        }) {
+            tracks.removeAll {
+                if case .unavailable = $0 { return true }
+                return false
+            }
+            audioNeedsSelection = true
+        }
         guard tracks.isEmpty else { return }
         let source = (soundSource ?? "local").lowercased()
-        if (source == "spotify" || source == "spotify playlist"),
-           let link = spotifyPlaylistURL, !link.isEmpty {
-            tracks = [.spotify(link: link)]
+        if source == "spotify" || source == "spotify playlist" {
+            audioNeedsSelection = true
+            soundSource = nil
+            spotifyPlaylistURL = nil
         } else if let path = audioPath, let name = audioName, !path.isEmpty {
             tracks = [.local(name: name, path: path, audioID: id)]
         }

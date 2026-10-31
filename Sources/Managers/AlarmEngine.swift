@@ -11,7 +11,6 @@ final class AlarmEngine: ObservableObject {
     private var timer: Timer?
     private let store: AlarmStore
     private let audioManager: AudioManager
-    private let spotifyBridge: SpotifyBridge
 
     private struct FireCandidate {
         let alarm: AlarmItem
@@ -27,10 +26,9 @@ final class AlarmEngine: ObservableObject {
     private var wakeObserver: NSObjectProtocol?
     private var activeObserver: NSObjectProtocol?
 
-    init(store: AlarmStore, audioManager: AudioManager, spotifyBridge: SpotifyBridge = .shared) {
+    init(store: AlarmStore, audioManager: AudioManager) {
         self.store = store
         self.audioManager = audioManager
-        self.spotifyBridge = spotifyBridge
     }
 
     func start() {
@@ -130,16 +128,8 @@ final class AlarmEngine: ObservableObject {
                     markPlaybackStartedIfNeeded()
                     return
                 }
-            case .spotify(let link):
-                if SpotifySupport.spotifyType(from: link).isValid {
-                    // A local preview must not continue underneath an external
-                    // player alarm.
-                    audioManager.stop()
-                    if spotifyBridge.playSpotify(from: link) {
-                        markPlaybackStartedIfNeeded()
-                        return
-                    }
-                }
+            case .unavailable:
+                break
             }
             currentTrackIndex += 1
         }
@@ -170,26 +160,16 @@ final class AlarmEngine: ObservableObject {
     // MARK: - User actions
 
     func stopRinging() {
-        let wasSpotify = currentTrackIsSpotify
         if let alarm = ringingAlarm { store.stopAlarm(alarm) }
         audioManager.stop()
-        if wasSpotify { spotifyBridge.pause() }
         finishCurrent()
     }
 
     func snoozeRinging(minutes: Int = 5) {
         guard let alarm = ringingAlarm else { return }
-        let wasSpotify = currentTrackIsSpotify
         store.snooze(alarm, minutes: minutes)
         audioManager.stop()
-        if wasSpotify { spotifyBridge.pause() }
         finishCurrent()
-    }
-
-    private var currentTrackIsSpotify: Bool {
-        guard let alarm = ringingAlarm, currentTrackIndex < alarm.tracks.count else { return false }
-        if case .spotify = alarm.tracks[currentTrackIndex] { return true }
-        return false
     }
 
     private func finishCurrent() {

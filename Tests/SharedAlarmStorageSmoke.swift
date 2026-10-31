@@ -18,6 +18,15 @@ struct SharedAlarmStorageSmoke {
         let recovered = storage.loadResult([String: String].self, from: storage.alarmsURL)
         precondition(recovered.status == .recoveredFromBackup)
         precondition(recovered.value == first)
+
+        let legacyJSON = """
+        [{"id":"\(UUID().uuidString)","hour":7,"minute":0,"repeatType":"Once","isEnabled":true,"tracks":[{"type":"spotify","link":"legacy"}]}]
+        """.data(using: .utf8)!
+        var migrated = try JSONDecoder().decode([AlarmItem].self, from: legacyJSON)[0]
+        migrated.migrateIfNeeded()
+        precondition(migrated.tracks.isEmpty)
+        precondition(migrated.audioNeedsSelection)
+
         print("shared storage smoke test passed")
     }
 }

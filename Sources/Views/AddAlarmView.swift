@@ -1,8 +1,7 @@
 import SwiftUI
 
 /// Sheet used to create a new alarm or edit an existing one: time, repeat
-/// type, and an ordered playlist of audio tracks (local files or Spotify
-/// links, freely mixable).
+/// type, and an ordered playlist of local audio tracks.
 struct AddAlarmView: View {
     @EnvironmentObject var store: AlarmStore
     @Environment(\.presentationMode) private var presentationMode
@@ -12,25 +11,11 @@ struct AddAlarmView: View {
     @State private var selectedTime: Date
     @State private var repeatType: RepeatType = .once
 
-    /// The editable track list (local + Spotify) for this alarm.
+    /// The editable local track list for this alarm.
     @State private var tracks: [AudioTrack] = []
-    /// Toggle between adding a local track or a Spotify link.
-    @State private var activeTab: TrackTab = .local
     /// Selected local audio in the import picker.
     @State private var selectedAudioID: UUID?
-    /// Spotify link text field content.
-    @State private var spotifyLink = ""
-
-    enum TrackTab: String, CaseIterable, Identifiable {
-        case local, spotify
-        var id: String { rawValue }
-        var title: String {
-            switch self {
-            case .local:   return "🎵 \(L("Local"))"
-            case .spotify: return "🎧 \(L("Spotify"))"
-            }
-        }
-    }
+    @State private var audioNeedsSelection = false
 
     init(alarm: AlarmItem? = nil) {
         self.editingAlarm = alarm
@@ -44,6 +29,7 @@ struct AddAlarmView: View {
             _selectedTime = State(initialValue: cal.date(from: comps) ?? now)
             _repeatType = State(initialValue: alarm.repeatType)
             _tracks = State(initialValue: alarm.tracks)
+            _audioNeedsSelection = State(initialValue: alarm.audioNeedsSelection)
         } else {
             comps.hour = 7
             comps.minute = 0
@@ -108,31 +94,18 @@ struct AddAlarmView: View {
             if !tracks.isEmpty {
                 trackList
             } else {
-                Text(L("No tracks yet. Add local files or Spotify links below."))
+                Text(L("No tracks yet. Add local files below."))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
 
             Divider()
 
-            // Add-track tab switcher: Local | Spotify
             Text(L("Add Track"))
                 .font(.caption)
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
-
-            Picker(selection: $activeTab, label: EmptyView()) {
-                ForEach(TrackTab.allCases) { tab in
-                    Text(tab.title).tag(tab)
-                }
-            }
-            .pickerStyle(SegmentedPickerStyle())
-
-            if activeTab == .local {
-                addLocalTrack
-            } else {
-                addSpotifyTrack
-            }
+            addLocalTrack
         }
         .padding(12)
         .background(
@@ -194,6 +167,11 @@ struct AddAlarmView: View {
 
     private var addLocalTrack: some View {
         VStack(spacing: 8) {
+            if audioNeedsSelection {
+                Text(L("This alarm needs a local audio file. Select one below."))
+                    .font(.caption)
+                    .foregroundColor(.orange)
+            }
             if store.importedAudios.isEmpty {
                 Text(L("No music imported yet. Import a song to use as the alarm sound."))
                     .font(.caption)
@@ -265,51 +243,6 @@ struct AddAlarmView: View {
         selectedAudioID = nil
     }
 
-    // MARK: - Add Spotify track
-
-    private var addSpotifyTrack: some View {
-        VStack(spacing: 6) {
-            TextField("https://open.spotify.com/playlist/...", text: $spotifyLink)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .font(.system(size: 13))
-            Text(spotifyHintText)
-                .font(.caption)
-                .foregroundColor(spotifyLink.isEmpty ? Color.secondary : (spotifyLinkValid ? Color.green : Color.red))
-            Button(action: { self.addSpotify() }) {
-                HStack(spacing: 6) {
-                    Text("➕")
-                    Text(L("Add to Playlist"))
-                }
-            }
-            .disabled(!spotifyLinkValid)
-        }
-    }
-
-    private var spotifyLinkValid: Bool {
-        SpotifySupport.spotifyType(from: spotifyLink).isValid
-    }
-
-    private var spotifyHintText: String {
-        if spotifyLink.isEmpty {
-            return L("Paste a Spotify playlist, track or album link")
-        }
-        if spotifyLinkValid {
-            let type = SpotifySupport.spotifyType(from: spotifyLink)
-            switch type {
-            case .playlist: return L("✓ Valid playlist — will play in order.")
-            case .track:    return L("✓ Valid track — single song.")
-            case .album:    return L("✓ Valid album — will play in order.")
-            }
-        }
-        return L("⚠️ Could not parse a Spotify link.")
-    }
-
-    private func addSpotify() {
-        guard spotifyLinkValid else { return }
-        tracks.append(.spotify(link: spotifyLink.trimmingCharacters(in: .whitespacesAndNewlines)))
-        spotifyLink = ""
-    }
-
     // MARK: - Track list manipulation
 
     private func removeTrack(at index: Int) {
@@ -340,6 +273,7 @@ struct AddAlarmView: View {
         alarm.minute = Calendar.current.component(.minute, from: selectedTime)
         alarm.repeatType = repeatType
         alarm.tracks = tracks
+        alarm.audioNeedsSelection = false
 
         if editingAlarm != nil {
             store.updateAlarm(alarm)
