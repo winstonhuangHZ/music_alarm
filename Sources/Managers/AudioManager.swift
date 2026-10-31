@@ -33,7 +33,7 @@ final class AudioManager: NSObject, ObservableObject {
         guard let p = makePlayer(url: url) else { return }
         p.volume = 1.0
         p.numberOfLoops = 0
-        p.play()
+        guard p.play() else { return }
         player = p
         currentURL = url
         nowPlayingName = name
@@ -42,30 +42,39 @@ final class AudioManager: NSObject, ObservableObject {
 
     // MARK: - Alarm ringing
 
+    @discardableResult
     func ring(url: URL, name: String?, numberOfLoops: Int = -1,
-              fadeDuration: TimeInterval = 20, targetVolume: Float = 0.85) {
+              fadeDuration: TimeInterval = 20, targetVolume: Float = 0.85) -> Bool {
         stop()
         guard let p = makePlayer(url: url) else {
-            ringFallback()
-            return
+            return false
         }
         isRinging = true
         p.volume = 0
         p.numberOfLoops = numberOfLoops
-        p.play()
+        guard p.play() else {
+            stop()
+            return false
+        }
         player = p
         currentURL = url
         nowPlayingName = name
         isPlaying = true
         startFade(to: targetVolume, duration: fadeDuration)
+        return true
     }
 
-    func ringFallback() {
-        if let sound = NSSound(named: "Glass") {
-            sound.loops = true
-            sound.play()
-            fallbackSound = sound
-        }
+    @discardableResult
+    func ringFallback() -> Bool {
+        stop()
+        guard let sound = NSSound(named: "Glass") else { return false }
+        sound.loops = true
+        guard sound.play() else { return false }
+        isRinging = true
+        isPlaying = true
+        nowPlayingName = L("System fallback sound")
+        fallbackSound = sound
+        return true
     }
 
     private func makePlayer(url: URL) -> AVAudioPlayer? {
@@ -114,9 +123,11 @@ final class AudioManager: NSObject, ObservableObject {
 extension AudioManager: AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         DispatchQueue.main.async {
+            guard self.player === player else { return }
             if self.isRinging {
                 self.onTrackFinished?()
             } else {
+                self.player = nil
                 self.isPlaying = false
                 self.currentURL = nil
                 self.nowPlayingName = nil

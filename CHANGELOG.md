@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.3.0 - unreleased
+
+### 调度可靠性
+
+- 使用具体 occurrence 判断到期，不再依赖恰好命中某一分钟。
+- 应用启动、重新激活和 Mac 从睡眠唤醒时会检查近期错过的 occurrence。
+- 支持同一时刻多个闹钟排队处理。
+- 一次性闹钟在实际播放或 fallback 成功开始后才被消费。
+- 播放失败时继续尝试下一个本地音频，再使用系统 fallback。
+- 编辑时间或重复规则时清除旧贪睡状态和旧 occurrence 去重状态。
+- 防止旧 AVAudioPlayer 完成回调推进新的播放会话。
+
 ## 2.2.0 - unreleased
 
 ### 数据可靠性

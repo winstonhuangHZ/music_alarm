@@ -117,10 +117,18 @@ final class AlarmStore: ObservableObject {
     /// Replaces an existing alarm in-place with an edited copy.
     func updateAlarm(_ alarm: AlarmItem) {
         guard let idx = alarms.firstIndex(where: { $0.id == alarm.id }) else { return }
-        // Preserve runtime state (snooze / last-fire dedup flag) when editing.
+        let old = alarms[idx]
         var updated = alarm
-        updated.snoozeUntil = alarms[idx].snoozeUntil
-        updated.lastFiredKey = alarms[idx].lastFiredKey
+        let scheduleChanged = old.hour != alarm.hour
+            || old.minute != alarm.minute
+            || old.repeatType != alarm.repeatType
+        if scheduleChanged {
+            updated.snoozeUntil = nil
+            updated.lastFiredKey = ""
+        } else {
+            updated.snoozeUntil = old.snoozeUntil
+            updated.lastFiredKey = old.lastFiredKey
+        }
         alarms[idx] = updated
         persistAlarmsAfterUserChange()
     }
@@ -135,7 +143,16 @@ final class AlarmStore: ObservableObject {
     }
 
     func markFired(at index: Int, now: Date) {
-        alarms[index].lastFiredKey = AlarmTimeUtil.fireKey(for: now)
+        markPlaybackStarted(id: alarms[index].id, occurrence: now, isSnooze: false)
+    }
+
+    /// Records that playback or fallback actually started for an occurrence.
+    /// The alarm is not consumed merely because the engine noticed it was due.
+    func markPlaybackStarted(id: UUID, occurrence: Date, isSnooze: Bool) {
+        guard let index = alarms.firstIndex(where: { $0.id == id }) else { return }
+        if !isSnooze {
+            alarms[index].lastFiredKey = AlarmTimeUtil.fireKey(for: occurrence)
+        }
         alarms[index].snoozeUntil = nil
         if alarms[index].repeatType == .once {
             alarms[index].isEnabled = false
@@ -146,7 +163,8 @@ final class AlarmStore: ObservableObject {
     func snooze(_ alarm: AlarmItem, minutes: Int = 5) {
         guard let idx = alarms.firstIndex(where: { $0.id == alarm.id }) else { return }
         alarms[idx].snoozeUntil = Date().addingTimeInterval(TimeInterval(minutes * 60))
-        alarms[idx].lastFiredKey = ""
+        // Keep the original occurrence key. Snooze is a continuation of that
+        // occurrence and must not make the base alarm fire a second time.
         alarms[idx].isEnabled = true // re-armed so the snoozed alarm can fire
         persistAlarmsAfterUserChange()
     }
@@ -165,7 +183,17 @@ final class AlarmStore: ObservableObject {
         var bestAlarm: AlarmItem?
         var bestDate: Date?
         for alarm in alarms where alarm.isEnabled {
-            guard let d = alarm.nextFireDate(from: now) else { continue }
+            let d: Date?
+            if let snooze = alarm.snoozeUntil, snooze <= now {
+                d = now
+            } else if let occurrence = alarm.mostRecentOccurrence(at: now),
+                      now.timeIntervalSince(occurrence) <= AlarmTimeUtil.missedAlarmWindow,
+                      alarm.lastFiredKey != AlarmTimeUtil.fireKey(for: occurrence) {
+                d = now
+            } else {
+                d = alarm.nextFireDate(from: now)
+            }
+            guard let d = d else { continue }
             if let bd = bestDate {
                 if d < bd {
                     bestDate = d

@@ -105,17 +105,21 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     // MARK: - Next fire date
 
     func nextFireDate(from now: Date = Date()) -> Date? {
-        if let snooze = snoozeUntil, snooze > now { return snooze }
-        let cal = Calendar.current
-        guard var next = cal.date(bySettingHour: hour, minute: minute, second: 0, of: now) else { return nil }
-        if next <= now {
-            guard let plus = cal.date(byAdding: .day, value: 1, to: next) else { return nil }
-            next = plus
+        if let snooze = snoozeUntil {
+            return snooze > now ? snooze : now
         }
+        let cal = Calendar.current
+        guard let today = scheduledDate(on: now, calendar: cal) else { return nil }
         switch repeatType {
-        case .once, .daily: return next
+        case .once:
+            return today > now ? today : nil
+        case .daily:
+            if today > now { return today }
+            return cal.date(byAdding: .day, value: 1, to: today)
         case .weekdays:
-            var candidate = next
+            var candidate = today > now
+                ? today
+                : (cal.date(byAdding: .day, value: 1, to: today) ?? today)
             while true {
                 let wd = cal.component(.weekday, from: candidate)
                 if (2...6).contains(wd) { return candidate }
@@ -123,6 +127,39 @@ struct AlarmItem: Identifiable, Codable, Equatable {
                 candidate = c
             }
         }
+    }
+
+    /// Returns the most recent scheduled occurrence at or before `now`.
+    /// The engine uses this to recover from timer gaps and system wake-up.
+    func mostRecentOccurrence(at now: Date = Date()) -> Date? {
+        if let snooze = snoozeUntil, snooze <= now { return snooze }
+        let cal = Calendar.current
+        var candidate: Date
+        if let today = scheduledDate(on: now, calendar: cal), today <= now {
+            candidate = today
+        } else {
+            guard let yesterday = cal.date(byAdding: .day, value: -1, to: now),
+                  let previous = scheduledDate(on: yesterday, calendar: cal) else { return nil }
+            candidate = previous
+        }
+
+        switch repeatType {
+        case .once, .daily:
+            return candidate
+        case .weekdays:
+            var weekdayCandidate = candidate
+            while true {
+                let wd = cal.component(.weekday, from: weekdayCandidate)
+                if (2...6).contains(wd) { return weekdayCandidate }
+                guard let previous = cal.date(byAdding: .day, value: -1, to: weekdayCandidate),
+                      let scheduled = scheduledDate(on: previous, calendar: cal) else { return nil }
+                weekdayCandidate = scheduled
+            }
+        }
+    }
+
+    private func scheduledDate(on day: Date, calendar: Calendar) -> Date? {
+        calendar.date(bySettingHour: hour, minute: minute, second: 0, of: day)
     }
 
     // MARK: - Backwards-compat migration

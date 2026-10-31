@@ -1,9 +1,9 @@
 import Foundation
 import Combine
+import AppKit
 
-/// Background alarm engine. Checks the clock every second and fires matching
-/// alarms by playing each track in the alarm's playlist sequentially, starting
-/// with the first local track or Spotify link.
+/// Background alarm engine. Tracks concrete scheduled occurrences instead of
+/// requiring a timer tick to land in one exact minute.
 final class AlarmEngine: ObservableObject {
     @Published private(set) var isRinging = false
     @Published private(set) var ringingAlarm: AlarmItem?
@@ -13,8 +13,19 @@ final class AlarmEngine: ObservableObject {
     private let audioManager: AudioManager
     private let spotifyBridge: SpotifyBridge
 
-    /// Index of the currently playing track (for sequential playback).
+    private struct FireCandidate {
+        let alarm: AlarmItem
+        let occurrence: Date
+        let isSnooze: Bool
+    }
+
+    /// Index of the currently playing track (for sequential playlist support).
     private var currentTrackIndex: Int = 0
+    private var currentCandidate: FireCandidate?
+    private var pendingCandidates: [FireCandidate] = []
+    private var claimedAlarmIDs = Set<UUID>()
+    private var wakeObserver: NSObjectProtocol?
+    private var activeObserver: NSObjectProtocol?
 
     init(store: AlarmStore, audioManager: AudioManager, spotifyBridge: SpotifyBridge = .shared) {
         self.store = store
@@ -29,44 +40,68 @@ final class AlarmEngine: ObservableObject {
         }
         RunLoop.main.add(t, forMode: .common)
         timer = t
+        wakeObserver = NotificationCenter.default.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in self?.tick() }
+        activeObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in self?.tick() }
         tick()
     }
 
     func stop() {
         timer?.invalidate()
         timer = nil
+        if let wakeObserver { NotificationCenter.default.removeObserver(wakeObserver) }
+        if let activeObserver { NotificationCenter.default.removeObserver(activeObserver) }
+        wakeObserver = nil
+        activeObserver = nil
     }
 
     func tick() {
-        guard !isRinging else { return }
         let now = Date()
-        for index in store.alarms.indices {
-            guard store.alarms[index].isEnabled else { continue }
-            if shouldFire(store.alarms[index], now: now) {
-                store.markFired(at: index, now: now)
-                let alarm = store.alarms[index]
-                trigger(alarm: alarm)
-                break
-            }
+        for alarm in store.alarms where alarm.isEnabled {
+            guard !claimedAlarmIDs.contains(alarm.id),
+                  let candidate = dueCandidate(for: alarm, now: now) else { continue }
+            claimedAlarmIDs.insert(alarm.id)
+            pendingCandidates.append(candidate)
         }
+        startNextIfNeeded()
     }
 
-    private func shouldFire(_ alarm: AlarmItem, now: Date) -> Bool {
-        let cal = Calendar.current
-        if let snooze = alarm.snoozeUntil { return now >= snooze }
-        let comps = cal.dateComponents([.hour, .minute, .weekday], from: now)
-        guard comps.hour == alarm.hour, comps.minute == alarm.minute else { return false }
-        switch alarm.repeatType {
-        case .once, .daily: break
-        case .weekdays:
-            guard let wd = comps.weekday, (2...6).contains(wd) else { return false }
+    private func dueCandidate(for alarm: AlarmItem, now: Date) -> FireCandidate? {
+        if let snooze = alarm.snoozeUntil, snooze <= now {
+            return FireCandidate(alarm: alarm, occurrence: snooze, isSnooze: true)
         }
-        return alarm.lastFiredKey != AlarmTimeUtil.fireKey(for: now)
+        guard let occurrence = alarm.mostRecentOccurrence(at: now),
+              now.timeIntervalSince(occurrence) <= AlarmTimeUtil.missedAlarmWindow,
+              alarm.lastFiredKey != AlarmTimeUtil.fireKey(for: occurrence) else { return nil }
+        return FireCandidate(alarm: alarm, occurrence: occurrence, isSnooze: false)
+    }
+
+    private func startNextIfNeeded() {
+        guard currentCandidate == nil else { return }
+        while !pendingCandidates.isEmpty {
+            let candidate = pendingCandidates.removeFirst()
+            guard let liveAlarm = store.alarms.first(where: { $0.id == candidate.alarm.id }),
+                  liveAlarm.isEnabled else {
+                claimedAlarmIDs.remove(candidate.alarm.id)
+                continue
+            }
+            currentCandidate = candidate
+            trigger(candidate: candidate)
+            return
+        }
     }
 
     // MARK: - Playlist playback
 
-    private func trigger(alarm: AlarmItem) {
+    private func trigger(candidate: FireCandidate) {
+        let alarm = candidate.alarm
         isRinging = true
         ringingAlarm = alarm
         currentTrackIndex = 0
@@ -78,25 +113,30 @@ final class AlarmEngine: ObservableObject {
         )
     }
 
-    /// Plays the track at `currentTrackIndex`. Falls back to a beep when no
-    /// track is playable.
+    /// Plays the current track. Failed tracks are skipped before falling back
+    /// to the system sound.
     private func playCurrentTrack() {
         guard let alarm = ringingAlarm else { return }
         let tracks = alarm.tracks
 
-        // Advance past any unplayable or already-exhausted local tracks.
         while currentTrackIndex < tracks.count {
             let track = tracks[currentTrackIndex]
             switch track {
             case .local(_, let path, _):
-                if FileManager.default.fileExists(atPath: path) {
-                    audioManager.ring(url: URL(fileURLWithPath: path), name: track.displayName,
-                                      numberOfLoops: 0)
+                if FileManager.default.fileExists(atPath: path),
+                   audioManager.ring(url: URL(fileURLWithPath: path),
+                                     name: track.displayName,
+                                     numberOfLoops: 0) {
+                    markPlaybackStartedIfNeeded()
                     return
                 }
             case .spotify(let link):
                 if SpotifySupport.spotifyType(from: link).isValid {
+                    // A local preview must not continue underneath an external
+                    // player alarm.
+                    audioManager.stop()
                     if spotifyBridge.playSpotify(from: link) {
+                        markPlaybackStartedIfNeeded()
                         return
                     }
                 }
@@ -104,46 +144,62 @@ final class AlarmEngine: ObservableObject {
             currentTrackIndex += 1
         }
 
-        // No track could be played — fall back to system beep.
-        audioManager.ringFallback()
-    }
-
-    /// Called by AudioManager when a local track finishes playing (for
-    /// sequential playlist support). Advances to the next track in the list.
-    func advanceToNextTrack() {
-        guard let alarm = ringingAlarm else { return }
-        currentTrackIndex += 1
-        if currentTrackIndex < alarm.tracks.count {
-            playCurrentTrack()
-        } else {
-            // All tracks exhausted — loop back to the first.
-            currentTrackIndex = 0
-            playCurrentTrack()
+        if audioManager.ringFallback() {
+            markPlaybackStartedIfNeeded()
         }
     }
+
+    private func markPlaybackStartedIfNeeded() {
+        guard let candidate = currentCandidate,
+              let liveAlarm = store.alarms.first(where: { $0.id == candidate.alarm.id }) else { return }
+        if candidate.isSnooze || liveAlarm.lastFiredKey != AlarmTimeUtil.fireKey(for: candidate.occurrence) {
+            store.markPlaybackStarted(id: candidate.alarm.id,
+                                      occurrence: candidate.occurrence,
+                                      isSnooze: candidate.isSnooze)
+        }
+    }
+
+    /// Called by AudioManager when a local track finishes playing. Advances to
+    /// the next track and loops the playlist after its last track.
+    func advanceToNextTrack() {
+        guard ringingAlarm != nil else { return }
+        currentTrackIndex += 1
+        playCurrentTrack()
+    }
+
+    // MARK: - User actions
 
     func stopRinging() {
-        guard let alarm = ringingAlarm else {
-            audioManager.stop()
-            isRinging = false
-            AlarmPopupController.dismiss()
-            return
-        }
-        store.stopAlarm(alarm)
+        let wasSpotify = currentTrackIsSpotify
+        if let alarm = ringingAlarm { store.stopAlarm(alarm) }
         audioManager.stop()
-        spotifyBridge.pause()
-        isRinging = false
-        ringingAlarm = nil
-        AlarmPopupController.dismiss()
+        if wasSpotify { spotifyBridge.pause() }
+        finishCurrent()
     }
 
     func snoozeRinging(minutes: Int = 5) {
         guard let alarm = ringingAlarm else { return }
+        let wasSpotify = currentTrackIsSpotify
         store.snooze(alarm, minutes: minutes)
         audioManager.stop()
-        spotifyBridge.pause()
+        if wasSpotify { spotifyBridge.pause() }
+        finishCurrent()
+    }
+
+    private var currentTrackIsSpotify: Bool {
+        guard let alarm = ringingAlarm, currentTrackIndex < alarm.tracks.count else { return false }
+        if case .spotify = alarm.tracks[currentTrackIndex] { return true }
+        return false
+    }
+
+    private func finishCurrent() {
         isRinging = false
         ringingAlarm = nil
+        if let candidate = currentCandidate {
+            claimedAlarmIDs.remove(candidate.alarm.id)
+        }
+        currentCandidate = nil
         AlarmPopupController.dismiss()
+        startNextIfNeeded()
     }
 }
