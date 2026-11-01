@@ -65,6 +65,7 @@ compile_arch() {
         -framework SwiftUI \
         -framework AppKit \
         -framework AVFoundation \
+        -framework CoreAudio \
         -framework CryptoKit \
         -framework Combine \
         -o "$TMP_DIR/$APP_NAME-$arch" \

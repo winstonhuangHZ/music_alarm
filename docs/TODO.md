@@ -8,6 +8,12 @@ are removed after their version is committed and pushed.
 暂无 2.18.0 之前已确定且未完成的项目。后续功能候选会在确认范围后加入这里，完成后从 Remaining
 移动到对应版本的 Completed 小节。
 
+后续功能按“先加入 TODO，再实现并在完成版本中移入 Completed”的流程维护。
+
+## Completed in 2.22.0
+
+- Added a Reliability Check page that checks the next alarm, alarm audio, imported audio health, fallback sound, output device and volume, shared storage, and scheduler activity.
+
 ## Completed in 2.21.1
 
 - Fixed the three-second wake confirmation gesture on macOS.

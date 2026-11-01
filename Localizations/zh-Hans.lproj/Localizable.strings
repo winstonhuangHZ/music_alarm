@@ -216,3 +216,35 @@
 "Open Music Library" = "打开音乐库";
 "Close" = "关闭";
 "Music Alarm" = "Music Alarm";
+
+
+/* Reliability check */
+"Reliability Check" = "闹钟可靠性检查";
+"Run Check" = "运行检查";
+"Run this before sleep to check whether the next alarm has a usable audio path and a working scheduler." = "睡前运行一次，检查下一次闹钟是否有可用音频路径，以及调度器是否正常工作。";
+"Last checked %@" = "上次检查：%@";
+"No check has been run" = "尚未运行检查";
+"Run a reliability check to inspect the next alarm and audio path." = "运行可靠性检查，查看下一次闹钟和音频路径。";
+"Next alarm" = "下一次闹钟";
+"%@ at %@" = "%@，时间为 %@";
+"No enabled alarms are scheduled." = "没有已启用的闹钟。";
+"Enabled alarms do not have a future occurrence." = "已启用的闹钟没有未来的响铃时间。";
+"%@ is available." = "%@ 可用。";
+"%@ is not available." = "%@ 不可用。";
+"Audio library" = "音频库";
+"%@ imported audio items are present and playable." = "%@ 个已导入音频存在且可以播放。";
+"%@ imported audio items need attention." = "%@ 个已导入音频需要处理。";
+"Alarm audio" = "闹钟音频";
+"%@ enabled alarms have a playable track." = "%@ 个已启用闹钟有可播放音轨。";
+"%@ enabled alarms have no playable track; fallback will be used." = "%@ 个已启用闹钟没有可播放音轨，将使用备用声音。";
+"%@ enabled alarms have no playable track or fallback." = "%@ 个已启用闹钟没有可播放音轨或备用声音。";
+"Output device" = "输出设备";
+"%@, system volume %@." = "%@，系统音量 %@。";
+"volume unavailable" = "音量不可用";
+"No default audio output device could be read." = "无法读取默认音频输出设备。";
+"Shared storage" = "共享存储";
+"Shared data is writable at %@." = "共享数据可写入：%@。";
+"Shared data is not writable at %@." = "共享数据不可写入：%@。";
+"Scheduler" = "调度器";
+"The scheduler has checked the current system time and is active." = "调度器已检查当前系统时间，正在运行。";
+"The scheduler has not reported an event yet." = "调度器尚未报告事件。";

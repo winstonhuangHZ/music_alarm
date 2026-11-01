@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.22.0 - unreleased
+
+### Reliability center
+
+- Added a Reliability Check page in Settings for the next alarm, enabled alarm audio, imported audio health, fallback sound, output device and system volume, shared storage, and scheduler activity.
+- Added readable pass, warning, and failure results so users can run a preflight check before sleep.
+
 ## 2.21.1 - unreleased
 
 ### Playback and wake confirmation

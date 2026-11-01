@@ -8,6 +8,7 @@ struct SettingsView: View {
     @State private var backupMessage = ""
     @State private var pendingImportURL: URL?
     @State private var showImportConfirmation = false
+    @State private var showReliabilityCheck = false
     @State private var backupPreview: BackupPreview?
     @State private var restorePolicy: BackupConflictPolicy = .replace
 
@@ -101,6 +102,13 @@ struct SettingsView: View {
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     diagnosticsView
+                    Button {
+                        showReliabilityCheck = true
+                    } label: {
+                        Label(L("Reliability Check"), systemImage: "checkmark.shield")
+                    }
+                    .buttonStyle(BorderedButtonStyle())
+                    .accessibilityLabel(L("Reliability Check"))
                 }
 
                 settingsSection(title: L("Recent alarm history"), systemImage: "clock.arrow.circlepath") {
@@ -147,6 +155,12 @@ struct SettingsView: View {
         .preferredColorScheme(AppThemePalette.palette(for: settings.themeChoice).colorScheme)
         .sheet(isPresented: $showImportConfirmation) {
             restoreConfirmation
+        }
+        .sheet(isPresented: $showReliabilityCheck) {
+            ReliabilityCheckView(settings: settings)
+                .environmentObject(store)
+                .environmentObject(engine)
+                .preferredColorScheme(AppThemePalette.palette(for: settings.themeChoice).colorScheme)
         }
     }
 
