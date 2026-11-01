@@ -231,16 +231,19 @@ final class AlarmEngine: ObservableObject {
     /// Called by AudioManager when a local track finishes playing. Advances to
     /// the next track and loops the playlist after its last track.
     func advanceToNextTrack() {
-        guard ringingAlarm != nil else { return }
-        currentTrackIndex += 1
-        if let alarm = ringingAlarm, currentTrackIndex >= alarm.tracks.count {
-            if alarm.loopsPlaylist {
-                currentTrackIndex = 0
-            } else {
+        guard let alarm = ringingAlarm, currentCandidate != nil else { return }
+
+        let nextIndex = currentTrackIndex + 1
+        if nextIndex >= alarm.tracks.count {
+            guard alarm.loopsPlaylist else {
                 stopRinging()
                 return
             }
+            currentTrackIndex = 0
+        } else {
+            currentTrackIndex = nextIndex
         }
+
         if !playCurrentTrack() {
             finishCurrent()
         }

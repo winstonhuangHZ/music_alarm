@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.21.1 - unreleased
+
+### Playback and wake confirmation
+
+- Fixed the three-second wake confirmation so the long-press gesture is handled by a direct gesture surface on macOS.
+- Fixed completed playlist tracks being retained as the active player while the next track was starting.
+- Made playlist advancement explicitly select the next track and preserve the configured loop or stop behavior.
+
 ## 2.21.0 - unreleased
 
 ### Interface polish

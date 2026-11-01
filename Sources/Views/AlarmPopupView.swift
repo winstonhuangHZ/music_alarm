@@ -182,25 +182,7 @@ struct AlarmPopupView: View {
                     .disabled(confirmationInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != "awake")
             }
         case .hold:
-            Button(action: {}) {
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill")
-                    Text(L("Hold for 3 seconds"))
-                }
-                .font(.headline)
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 9)
-                .background(Color.green)
-                .cornerRadius(9)
-            }
-            .buttonStyle(PlainButtonStyle())
-            .accessibilityLabel(L("Hold for 3 seconds"))
-            .onLongPressGesture(minimumDuration: 3) {
-                guard !gestureCompleted else { return }
-                gestureCompleted = true
-                onConfirmWake(alarm)
-            }
+            holdConfirmationControl
         case .slide:
             VStack(spacing: 5) {
                 Text(L("Slide to confirm"))
@@ -233,6 +215,39 @@ struct AlarmPopupView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .accessibilityLabel(L("Confirm from the main window"))
+        }
+    }
+
+    /// A direct gesture surface is used instead of putting the long-press
+    /// gesture on Button. On macOS, Button's click recognizer can consume the
+    /// gesture before LongPressGesture reaches its minimum duration.
+    private var holdConfirmationControl: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+            Text(L("Hold for 3 seconds"))
+        }
+        .font(.headline)
+        .foregroundColor(.white)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 9)
+        .background(Color.green)
+        .cornerRadius(9)
+        .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .gesture(
+            LongPressGesture(minimumDuration: 3, maximumDistance: 30)
+                .onEnded { _ in
+                    guard !gestureCompleted else { return }
+                    gestureCompleted = true
+                    onConfirmWake(alarm)
+                }
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(L("Hold for 3 seconds"))
+        .accessibilityAction {
+            guard !gestureCompleted else { return }
+            gestureCompleted = true
+            onConfirmWake(alarm)
         }
     }
 

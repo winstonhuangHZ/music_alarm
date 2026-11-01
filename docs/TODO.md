@@ -8,6 +8,11 @@ are removed after their version is committed and pushed.
 暂无 2.18.0 之前已确定且未完成的项目。后续功能候选会在确认范围后加入这里，完成后从 Remaining
 移动到对应版本的 Completed 小节。
 
+## Completed in 2.21.1
+
+- Fixed the three-second wake confirmation gesture on macOS.
+- Fixed sequential playlist advancement after a track finishes and preserved loop/stop behavior.
+
 ## Completed in 2.21.0
 
 - Replaced user-facing emoji controls and status marks with native SF Symbols.
