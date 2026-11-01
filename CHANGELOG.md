@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.20.3 - unreleased
+
+### Application icon proportions
+
+- Added a macOS-style transparent safety margin around the application icon artwork.
+- Reduced the visual mark to 84% of the canvas so it sits closer to the apparent size of native applications in Finder and the Dock.
+
 ## 2.20.2 - unreleased
 
 ### Playlist layout
