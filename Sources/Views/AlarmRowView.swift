@@ -38,6 +38,11 @@ struct AlarmRowView: View {
                             .font(.caption)
                             .foregroundColor(wakeConfirmationColor)
                     }
+                    if alarm.isTemporarilyDisabled {
+                        Text(L("• Temporarily disabled"))
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
                 }
                 .foregroundColor(.secondary)
                 if alarm.requiresWakeConfirmation && settings.wakeConfirmationEnabled {
@@ -110,6 +115,25 @@ struct AlarmRowView: View {
 
             Button(action: { self.store.skipNext(id: self.alarm.id) }) {
                 Text(L("Skip next occurrence"))
+            }
+
+            if alarm.isTemporarilyDisabled {
+                Button(action: { self.store.resumeAlarm(id: self.alarm.id) }) {
+                    Text(L("Resume alarm"))
+                }
+            } else {
+                Menu(L("Temporarily disable")) {
+                    Button(L("For 1 hour")) {
+                        self.store.temporarilyDisable(id: self.alarm.id,
+                                                      until: Date().addingTimeInterval(3600))
+                    }
+                    Button(L("Until tomorrow")) {
+                        let calendar = Calendar.current
+                        let tomorrow = calendar.date(byAdding: .day, value: 1,
+                                                     to: calendar.startOfDay(for: Date())) ?? Date().addingTimeInterval(86400)
+                        self.store.temporarilyDisable(id: self.alarm.id, until: tomorrow)
+                    }
+                }
             }
 
             Divider()

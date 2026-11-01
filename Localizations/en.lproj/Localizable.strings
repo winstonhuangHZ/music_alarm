@@ -192,3 +192,24 @@
 "Confirmation word" = "Confirmation word";
 "Pause preview" = "Pause preview";
 "Delete audio" = "Delete audio";
+
+"System" = "System";
+"Light" = "Light";
+"Dark" = "Dark";
+"Dawn Flow" = "Dawn Flow";
+"Dracula" = "Dracula";
+"Nord" = "Nord";
+"Catppuccin" = "Catppuccin";
+"Theme" = "Theme";
+"Pause today" = "Pause today";
+"Pause for 1 hour" = "Pause for 1 hour";
+"Pause alarms" = "Pause alarms";
+"Resume all alarms" = "Resume all alarms";
+"All alarms paused until %@" = "All alarms paused until %@";
+"Temporarily disabled" = "Temporarily disabled";
+"• Temporarily disabled" = "• Temporarily disabled";
+"Resume alarm" = "Resume alarm";
+"For 1 hour" = "For 1 hour";
+"Until tomorrow" = "Until tomorrow";
+"Temporarily disable" = "Temporarily disable";
+"Runtime state is missing" = "Runtime state is missing";

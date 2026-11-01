@@ -26,6 +26,7 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     var minute: Int = 0
     var repeatType: RepeatType = .once
     var isEnabled: Bool = true
+    var temporaryDisabledUntil: Date?
     var label: String = ""
     var scheduledDate: Date?
     /// Calendar weekday values use Foundation's convention: Sunday = 1.
@@ -68,7 +69,7 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     var lastFiredKey: String = ""
 
     private enum CodingKeys: String, CodingKey {
-        case id, hour, minute, repeatType, isEnabled, label, scheduledDate, weekdays
+        case id, hour, minute, repeatType, isEnabled, temporaryDisabledUntil, label, scheduledDate, weekdays
         case requiresWakeConfirmation, wakeConfirmationState
         case wakeStartedAt, wakeStoppedAt, wakeConfirmedAt, wakeConfirmationDeadline, wakeOccurrenceID
         case skipNextOccurrenceKey, snoozeMinutes
@@ -89,6 +90,7 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         minute = try c.decodeIfPresent(Int.self, forKey: .minute) ?? 0
         repeatType = try c.decodeIfPresent(RepeatType.self, forKey: .repeatType) ?? .once
         isEnabled = try c.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        temporaryDisabledUntil = try c.decodeIfPresent(Date.self, forKey: .temporaryDisabledUntil)
         label = try c.decodeIfPresent(String.self, forKey: .label) ?? ""
         scheduledDate = try c.decodeIfPresent(Date.self, forKey: .scheduledDate)
         weekdays = try c.decodeIfPresent(Set<Int>.self, forKey: .weekdays) ?? []
@@ -134,6 +136,11 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     /// Whether the alarm actually has at least one playable sound configured.
     var hasSound: Bool {
         tracks.contains { $0.isPlayable }
+    }
+
+    var isTemporarilyDisabled: Bool {
+        if let until = temporaryDisabledUntil { return until > Date() }
+        return false
     }
 
     /// Compact summary shown in the alarm row.

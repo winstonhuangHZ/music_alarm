@@ -78,7 +78,7 @@ final class AlarmEngine: ObservableObject {
         let now = Date()
         lastDiagnostic = String(format: L("Scheduler checked at %@"), diagnosticDate(now))
         store.reconcileWakeConfirmationStates(now: now)
-        for alarm in store.alarms where alarm.isEnabled {
+        for alarm in store.alarms where store.isAlarmEnabled(alarm, now: now) {
             guard !claimedAlarmIDs.contains(alarm.id),
                   let candidate = dueCandidate(for: alarm, now: now, reason: reason) else { continue }
             claimedAlarmIDs.insert(alarm.id)
@@ -124,7 +124,7 @@ final class AlarmEngine: ObservableObject {
         while !pendingCandidates.isEmpty {
             let candidate = pendingCandidates.removeFirst()
             guard let liveAlarm = store.alarms.first(where: { $0.id == candidate.alarm.id }),
-                  liveAlarm.isEnabled else {
+                  store.isAlarmEnabled(liveAlarm) else {
                 claimedAlarmIDs.remove(candidate.alarm.id)
                 continue
             }
@@ -250,7 +250,7 @@ final class AlarmEngine: ObservableObject {
     /// a playable track, or the system fallback when none is available.
     func testAlarm() {
         guard currentCandidate == nil else { return }
-        let alarm = store.alarms.first(where: { $0.isEnabled && $0.hasSound })
+        let alarm = store.alarms.first(where: { store.isAlarmEnabled($0) && $0.hasSound })
             ?? store.alarms.first
             ?? AlarmItem()
         currentCandidate = FireCandidate(alarm: alarm,

@@ -23,6 +23,28 @@
 6. **确认强度可调**：普通闹钟保持一键停止；需要真正起床的人可以打开确认状态，并在主列表继续完成确认。
 7. **播放行为可控**：用户可以设置渐入、音量、最长播放时间和播放列表循环，不需要接受固定播放策略。
 
+## 主题参考与视觉决策
+
+本阶段对照了几个开源项目的配色和动态渐变实现：
+
+- [Cindori/FluidGradient](https://github.com/Cindori/FluidGradient)：参考 blob、模糊层和低频运动的组合方式，适合后续继续优化动态背景的 CPU 占用。
+- [CypherPoet/AnimatableGradients](https://github.com/CypherPoet/AnimatableGradients)：参考用动画进度平滑插值渐变颜色的实现思路。
+- [catppuccin/palette](https://github.com/catppuccin/palette)：参考背景、surface、文字和 accent 的层级关系，让深色主题长时间使用时不刺眼。
+- [dracula/dracula-theme](https://github.com/dracula/dracula-theme)：参考深色背景、紫色聚焦、橙色提示和红色危险状态的语义映射。
+
+当前主题分工如下：
+
+| 主题 | 视觉用途 | 动态强调 |
+|---|---|---|
+| Dawn Flow | Music Alarm 的品牌主题 | 橙、红、紫和蓝紫色缓慢流动；响铃时转为危险色，确认时转为绿色 |
+| Dracula | 高对比深色主题 | 紫色 accent、橙色提示、红色危险 |
+| Nord | 低饱和长时间使用主题 | 蓝灰色冷色渐变，暂停时降低对比度 |
+| Catppuccin | 柔和深色主题 | mauve、pink、peach 的低刺激过渡 |
+| System / Light / Dark | 跟随或贴近 macOS 习惯 | 动态效果保持克制，并支持减少动画 |
+
+动态视觉只表达应用状态：空闲、即将响铃、暂停、正在响铃和等待确认。它不会改变闹钟逻辑，
+也不会用高频闪烁制造紧迫感；用户开启 macOS“减少动态效果”后，背景停止持续旋转。
+
 ## 不做的方向
 
 - 不把第三方流媒体自动播放作为核心闹钟能力。

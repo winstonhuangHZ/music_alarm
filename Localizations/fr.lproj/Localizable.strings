@@ -192,3 +192,24 @@
 "Confirmation word" = "Confirmation word";
 "Pause preview" = "Pause preview";
 "Delete audio" = "Delete audio";
+
+"System" = "Système";
+"Light" = "Clair";
+"Dark" = "Sombre";
+"Dawn Flow" = "Flux de l’aube";
+"Dracula" = "Dracula";
+"Nord" = "Nord";
+"Catppuccin" = "Catppuccin";
+"Theme" = "Thème";
+"Pause today" = "Suspendre aujourd’hui";
+"Pause for 1 hour" = "Suspendre 1 heure";
+"Pause alarms" = "Suspendre les alarmes";
+"Resume all alarms" = "Reprendre toutes les alarmes";
+"All alarms paused until %@" = "Toutes les alarmes sont suspendues jusqu’à %@";
+"Temporarily disabled" = "Désactivée temporairement";
+"• Temporarily disabled" = "• Désactivée temporairement";
+"Resume alarm" = "Reprendre l’alarme";
+"For 1 hour" = "1 heure";
+"Until tomorrow" = "Jusqu’à demain";
+"Temporarily disable" = "Désactiver temporairement";
+"Runtime state is missing" = "État d’exécution manquant";

@@ -48,6 +48,10 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(fallbackSoundChoice.rawValue, forKey: Keys.fallbackSoundChoice) }
     }
 
+    @Published var themeChoice: ThemeChoice {
+        didSet { UserDefaults.standard.set(themeChoice.rawValue, forKey: Keys.themeChoice) }
+    }
+
     @Published private(set) var launchAtLoginError: String?
 
     private enum Keys {
@@ -60,6 +64,7 @@ final class AppSettings: ObservableObject {
         static let wakeConfirmationDeadline = "MusicAlarm.wakeConfirmationDeadline.v1"
         static let wakeConfirmationMode = "MusicAlarm.wakeConfirmationMode.v1"
         static let fallbackSoundChoice = "MusicAlarm.fallbackSoundChoice.v1"
+        static let themeChoice = "MusicAlarm.themeChoice.v1"
     }
 
     private init() {
@@ -71,6 +76,7 @@ final class AppSettings: ObservableObject {
         wakeConfirmationDeadlineMinutes = UserDefaults.standard.object(forKey: Keys.wakeConfirmationDeadline) as? Int ?? 30
         wakeConfirmationMode = WakeConfirmationMode(rawValue: UserDefaults.standard.string(forKey: Keys.wakeConfirmationMode) ?? "") ?? .button
         fallbackSoundChoice = FallbackSoundChoice(rawValue: UserDefaults.standard.string(forKey: Keys.fallbackSoundChoice) ?? "") ?? .glass
+        themeChoice = ThemeChoice(rawValue: UserDefaults.standard.string(forKey: Keys.themeChoice) ?? "") ?? .system
 
         if #available(macOS 13.0, *) {
             launchAtLogin = SMAppService.mainApp.status == .enabled

@@ -10,6 +10,7 @@ struct ContentView: View {
     @EnvironmentObject var audioManager: AudioManager
     @EnvironmentObject var engine: AlarmEngine
     @EnvironmentObject var languageManager: LanguageManager
+    @ObservedObject private var settings = AppSettings.shared
 
     @State private var showAddAlarm = false
     @State private var editingAlarm: AlarmItem?
@@ -17,17 +18,21 @@ struct ContentView: View {
     @State private var clockTimer: Timer?
 
     var body: some View {
-        VStack(spacing: 0) {
-            headerView
-            Divider()
-            alarmListView
-            Divider()
-            AudioBarView()
-            Divider()
-            footerBar
+        ZStack {
+            ThemeBackdrop(choice: settings.themeChoice, visualState: visualState)
+            VStack(spacing: 0) {
+                headerView
+                Divider()
+                alarmListView
+                Divider()
+                AudioBarView()
+                Divider()
+                footerBar
+            }
         }
         .frame(minWidth: 760, minHeight: 640)
-        .background(Color(NSColor.windowBackgroundColor))
+        .accentColor(AppThemePalette.palette(for: settings.themeChoice).accent)
+        .preferredColorScheme(AppThemePalette.palette(for: settings.themeChoice).colorScheme)
         .sheet(isPresented: $showAddAlarm) {
             AddAlarmView(alarm: self.editingAlarm)
         }
@@ -174,6 +179,18 @@ struct ContentView: View {
         HStack {
             languagePicker
             Spacer()
+            if store.isPausedForAll {
+                Button(L("Resume all alarms")) { store.resumeAll() }
+                    .accessibilityLabel(L("Resume all alarms"))
+            } else {
+                Menu {
+                    Button(L("Pause today")) { store.pauseToday() }
+                    Button(L("Pause for 1 hour")) { store.pauseFor(hours: 1) }
+                } label: {
+                    Text(L("Pause alarms"))
+                }
+                .accessibilityLabel(L("Pause alarms"))
+            }
             Button(action: { self.engine.testAlarm() }) {
                 HStack(spacing: 6) {
                     Text("🔊")
@@ -197,6 +214,22 @@ struct ContentView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+    }
+
+    private var visualState: ThemeVisualState {
+        if store.isPausedForAll { return .paused }
+        if engine.isRinging {
+            if engine.ringingAlarm?.wakeConfirmationState == .pending
+                || engine.ringingAlarm?.wakeConfirmationState == .stoppedWithoutConfirmation {
+                return .confirming
+            }
+            return .ringing
+        }
+        if let next = store.nextAlarmFire(at: now).date,
+           next.timeIntervalSince(now) <= 30 * 60 {
+            return .upcoming
+        }
+        return .idle
     }
 
     /// In-app language switcher picker (bottom-left of the footer).

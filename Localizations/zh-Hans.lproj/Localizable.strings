@@ -192,3 +192,24 @@
 "Confirmation word" = "Confirmation word";
 "Pause preview" = "Pause preview";
 "Delete audio" = "Delete audio";
+
+"System" = "系统";
+"Light" = "浅色";
+"Dark" = "深色";
+"Dawn Flow" = "晨曦流动";
+"Dracula" = "Dracula";
+"Nord" = "Nord";
+"Catppuccin" = "Catppuccin";
+"Theme" = "主题";
+"Pause today" = "暂停今天";
+"Pause for 1 hour" = "暂停 1 小时";
+"Pause alarms" = "暂停闹钟";
+"Resume all alarms" = "恢复全部闹钟";
+"All alarms paused until %@" = "全部闹钟已暂停至 %@";
+"Temporarily disabled" = "临时禁用";
+"• Temporarily disabled" = "• 临时禁用";
+"Resume alarm" = "恢复闹钟";
+"For 1 hour" = "1 小时";
+"Until tomorrow" = "直到明天";
+"Temporarily disable" = "临时禁用";
+"Runtime state is missing" = "运行时状态缺失";

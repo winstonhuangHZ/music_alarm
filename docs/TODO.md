@@ -5,6 +5,18 @@ are removed after their version is committed and pushed.
 
 ## Remaining
 
+暂无 2.18.0 之前已确定且未完成的项目。后续功能候选会在确认范围后加入这里，完成后从 Remaining
+移动到对应版本的 Completed 小节。
+
+## Completed in 2.18.0
+
+- Added System, Light, Dark, Dawn Flow, Dracula, Nord, and Catppuccin theme palettes.
+- Added state-aware animated background visuals and reduced-motion support.
+- Added pause today, pause for one hour, resume all alarms, and per-alarm temporary disable.
+- Persisted shared pause state in `runtime.json` for all app copies and install locations.
+- Added runtime state to backup export, preview, replace restore, and merge restore.
+- Preserved compatibility with format 1 and 2 backups.
+- Added pause, temporary disable, runtime persistence, and runtime restore smoke tests.
 
 ## Completed in 2.8.0
 

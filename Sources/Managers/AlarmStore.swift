@@ -48,6 +48,9 @@ final class AlarmStore: ObservableObject {
     @Published var occurrences: [AlarmOccurrence] {
         didSet { save() }
     }
+    @Published var pauseAllUntil: Date? {
+        didSet { saveRuntimeState() }
+    }
 
     private let storage: SharedAlarmStorage
     var sharedStorage: SharedAlarmStorage { storage }
@@ -64,6 +67,7 @@ final class AlarmStore: ObservableObject {
             let loadedAlarms = storage.loadResult([AlarmItem].self, from: storage.alarmsURL)
             let loadedAudios = storage.loadResult([ImportedAudio].self, from: storage.importedAudiosURL)
             let loadedOccurrences = storage.loadResult([AlarmOccurrence].self, from: storage.occurrencesURL)
+            let loadedRuntime = storage.loadResult(SharedAlarmRuntimeState.self, from: storage.runtimeURL)
 
             alarmsNeedRepair = loadedAlarms.status == .invalid
             importedAudiosNeedRepair = loadedAudios.status == .invalid
@@ -71,6 +75,7 @@ final class AlarmStore: ObservableObject {
             alarms = loadedAlarms.value ?? []
             importedAudios = loadedAudios.value ?? []
             occurrences = loadedOccurrences.value ?? []
+            pauseAllUntil = loadedRuntime.value?.pauseAllUntil
 
             migrateLoadedData()
 
@@ -88,6 +93,9 @@ final class AlarmStore: ObservableObject {
                 _ = storage.save(value, to: storage.occurrencesURL)
                 occurrencesNeedRepair = false
             }
+            if loadedRuntime.status == .recoveredFromBackup, let value = loadedRuntime.value {
+                _ = storage.save(value, to: storage.runtimeURL)
+            }
         } else {
             let legacyAlarms = Self.loadLegacy([AlarmItem].self, key: legacyAlarmsKey)
             var loadedAlarms = legacyAlarms.value ?? []
@@ -99,6 +107,7 @@ final class AlarmStore: ObservableObject {
             alarms = loadedAlarms
             importedAudios = loadedAudios
             occurrences = []
+            pauseAllUntil = nil
 
             // Do not replace unreadable legacy data with empty shared files.
             if !legacyAlarms.hadData || legacyAlarms.value != nil {
@@ -140,6 +149,7 @@ final class AlarmStore: ObservableObject {
         let loadedAlarms = storage.loadResult([AlarmItem].self, from: storage.alarmsURL)
         let loadedAudios = storage.loadResult([ImportedAudio].self, from: storage.importedAudiosURL)
         let loadedOccurrences = storage.loadResult([AlarmOccurrence].self, from: storage.occurrencesURL)
+        let loadedRuntime = storage.loadResult(SharedAlarmRuntimeState.self, from: storage.runtimeURL)
 
         if let value = loadedAlarms.value {
             alarmsNeedRepair = false
@@ -152,6 +162,9 @@ final class AlarmStore: ObservableObject {
         if let value = loadedOccurrences.value {
             occurrencesNeedRepair = false
             occurrences = value
+        }
+        if let value = loadedRuntime.value {
+            pauseAllUntil = value.pauseAllUntil
         }
         migrateLoadedData()
     }
@@ -168,12 +181,13 @@ final class AlarmStore: ObservableObject {
         persistAlarmsAfterUserChange()
     }
 
-    func replaceDataFromBackup(alarms: [AlarmItem], importedAudios: [ImportedAudio], occurrences: [AlarmOccurrence] = []) {
+    func replaceDataFromBackup(alarms: [AlarmItem], importedAudios: [ImportedAudio], occurrences: [AlarmOccurrence] = [], runtimeState: SharedAlarmRuntimeState = SharedAlarmRuntimeState(pauseAllUntil: nil)) {
         alarmsNeedRepair = false
         importedAudiosNeedRepair = false
         self.alarms = alarms
         self.importedAudios = importedAudios
         self.occurrences = occurrences
+        self.pauseAllUntil = runtimeState.pauseAllUntil
         persistAlarmsAfterUserChange()
         persistImportedAudiosAfterUserChange()
         persistOccurrencesAfterUserChange()
@@ -225,9 +239,48 @@ final class AlarmStore: ObservableObject {
     func toggleEnabled(id: UUID, enabled: Bool) {
         guard let idx = alarms.firstIndex(where: { $0.id == id }) else { return }
         alarms[idx].isEnabled = enabled
+        if enabled { alarms[idx].temporaryDisabledUntil = nil }
         if !enabled {
             alarms[idx].snoozeUntil = nil // cancels a pending snooze
         }
+        persistAlarmsAfterUserChange()
+    }
+
+    func isAlarmEnabled(_ alarm: AlarmItem, now: Date = Date()) -> Bool {
+        guard alarm.isEnabled else { return false }
+        if let pauseAllUntil, pauseAllUntil > now { return false }
+        if let until = alarm.temporaryDisabledUntil, until > now { return false }
+        return true
+    }
+
+    var isPausedForAll: Bool {
+        if let pauseAllUntil { return pauseAllUntil > Date() }
+        return false
+    }
+
+    func pauseToday() {
+        let calendar = Calendar.current
+        pauseAllUntil = calendar.date(byAdding: .day, value: 1,
+                                      to: calendar.startOfDay(for: Date()))
+    }
+
+    func pauseFor(hours: Int) {
+        pauseAllUntil = Date().addingTimeInterval(TimeInterval(max(1, hours) * 3600))
+    }
+
+    func resumeAll() {
+        pauseAllUntil = nil
+    }
+
+    func temporarilyDisable(id: UUID, until: Date) {
+        guard let index = alarms.firstIndex(where: { $0.id == id }) else { return }
+        alarms[index].temporaryDisabledUntil = until
+        persistAlarmsAfterUserChange()
+    }
+
+    func resumeAlarm(id: UUID) {
+        guard let index = alarms.firstIndex(where: { $0.id == id }) else { return }
+        alarms[index].temporaryDisabledUntil = nil
         persistAlarmsAfterUserChange()
     }
 
@@ -425,9 +478,12 @@ final class AlarmStore: ObservableObject {
 
     /// The soonest enabled alarm and its fire date.
     func nextAlarmFire(at now: Date = Date()) -> (alarm: AlarmItem?, date: Date?) {
+        if let pauseAllUntil, pauseAllUntil > now {
+            return (nil, nil)
+        }
         var bestAlarm: AlarmItem?
         var bestDate: Date?
-        for alarm in alarms where alarm.isEnabled {
+        for alarm in alarms where isAlarmEnabled(alarm, now: now) {
             let d: Date?
             if let snooze = alarm.snoozeUntil, snooze <= now {
                 d = now
@@ -633,6 +689,10 @@ final class AlarmStore: ObservableObject {
         _ = storage.save(occurrences, to: storage.occurrencesURL)
     }
 
+    private func saveRuntimeState() {
+        _ = storage.save(SharedAlarmRuntimeState(pauseAllUntil: pauseAllUntil), to: storage.runtimeURL)
+    }
+
     private func isPlayableAudio(url: URL) -> Bool {
         guard FileManager.default.fileExists(atPath: url.path),
               let player = try? AVAudioPlayer(contentsOf: url) else { return false }
@@ -712,8 +772,8 @@ final class AlarmStore: ObservableObject {
         defer { try? handle.close() }
         var hasher = SHA256()
         while autoreleasepool(invoking: {
-            let data = try? handle.read(upToCount: 1024 * 1024)
-            guard let data, !data.isEmpty else { return false }
+            let data = handle.readData(ofLength: 1024 * 1024)
+            guard !data.isEmpty else { return false }
             hasher.update(data: data)
             return true
         }) {}

@@ -1,6 +1,10 @@
 import Foundation
 import Darwin
 
+struct SharedAlarmRuntimeState: Codable, Equatable {
+    var pauseAllUntil: Date?
+}
+
 /// Stable, app-instance-independent storage for alarms and imported audio.
 /// Every Music Alarm build uses this same directory:
 /// ~/Library/Application Support/Music Alarm/
@@ -12,6 +16,7 @@ final class SharedAlarmStorage {
     let alarmsURL: URL
     let importedAudiosURL: URL
     let occurrencesURL: URL
+    let runtimeURL: URL
 
     private let fileManager: FileManager
 
@@ -44,6 +49,7 @@ final class SharedAlarmStorage {
         alarmsURL = self.rootURL.appendingPathComponent("alarms.json")
         importedAudiosURL = self.rootURL.appendingPathComponent("imported-audios.json")
         occurrencesURL = self.rootURL.appendingPathComponent("occurrences.json")
+        runtimeURL = self.rootURL.appendingPathComponent("runtime.json")
     }
 
     func prepareDirectories() throws {
@@ -55,6 +61,7 @@ final class SharedAlarmStorage {
         fileManager.fileExists(atPath: alarmsURL.path)
             || fileManager.fileExists(atPath: importedAudiosURL.path)
             || fileManager.fileExists(atPath: occurrencesURL.path)
+            || fileManager.fileExists(atPath: runtimeURL.path)
     }
 
     func loadResult<T: Decodable>(_ type: T.Type, from url: URL) -> LoadResult<T> {

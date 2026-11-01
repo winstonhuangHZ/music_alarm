@@ -46,6 +46,19 @@ enum FallbackSoundChoice: String, CaseIterable, Identifiable {
     var title: String { rawValue }
 }
 
+enum ThemeChoice: String, CaseIterable, Identifiable {
+    case system = "System"
+    case light = "Light"
+    case dark = "Dark"
+    case dawnFlow = "Dawn Flow"
+    case dracula = "Dracula"
+    case nord = "Nord"
+    case catppuccin = "Catppuccin"
+
+    var id: String { rawValue }
+    var title: String { L(rawValue) }
+}
+
 /// Shared date / fire-key helpers used by the alarm engine and store.
 enum AlarmTimeUtil {
     static let fireFormatter: DateFormatter = {

@@ -13,7 +13,7 @@ struct AudioBarView: View {
             musicList
         }
         .padding(14)
-        .background(Color(NSColor.windowBackgroundColor))
+        .background(Color.clear)
     }
 
     private var headerRow: some View {

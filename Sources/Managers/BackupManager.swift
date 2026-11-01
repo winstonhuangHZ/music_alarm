@@ -7,18 +7,20 @@ struct MusicAlarmBackupManifest: Codable {
     let appVersion: String
     let includesAudio: Bool
     let includesOccurrences: Bool
+    let includesRuntimeState: Bool
 
     private enum CodingKeys: String, CodingKey {
-        case formatVersion, createdAt, appVersion, includesAudio, includesOccurrences
+        case formatVersion, createdAt, appVersion, includesAudio, includesOccurrences, includesRuntimeState
     }
 
     init(formatVersion: Int, createdAt: Date, appVersion: String,
-         includesAudio: Bool, includesOccurrences: Bool) {
+         includesAudio: Bool, includesOccurrences: Bool, includesRuntimeState: Bool = false) {
         self.formatVersion = formatVersion
         self.createdAt = createdAt
         self.appVersion = appVersion
         self.includesAudio = includesAudio
         self.includesOccurrences = includesOccurrences
+        self.includesRuntimeState = includesRuntimeState
     }
 
     init(from decoder: Decoder) throws {
@@ -28,6 +30,7 @@ struct MusicAlarmBackupManifest: Codable {
         appVersion = try c.decode(String.self, forKey: .appVersion)
         includesAudio = try c.decodeIfPresent(Bool.self, forKey: .includesAudio) ?? false
         includesOccurrences = try c.decodeIfPresent(Bool.self, forKey: .includesOccurrences) ?? false
+        includesRuntimeState = try c.decodeIfPresent(Bool.self, forKey: .includesRuntimeState) ?? false
     }
 }
 
@@ -59,6 +62,7 @@ struct BackupPreview {
     let audioCount: Int
     let occurrenceCount: Int
     let missingAudioCount: Int
+    let runtimeState: SharedAlarmRuntimeState
 
     var summary: String {
         String(format: L("%@ alarms, %@ audio items, %@ history records, %@ missing audio files"),
@@ -102,7 +106,8 @@ enum BackupManager {
                              alarmCount: contents.alarms.count,
                              audioCount: contents.audios.count,
                              occurrenceCount: contents.occurrences.count,
-                             missingAudioCount: missingAudioCount)
+                             missingAudioCount: missingAudioCount,
+                             runtimeState: contents.runtimeState)
     }
 
     static func export(store: AlarmStore, to parent: URL) throws -> URL {
@@ -158,15 +163,18 @@ enum BackupManager {
             }
         }
 
-        let manifest = MusicAlarmBackupManifest(formatVersion: 2,
+        let manifest = MusicAlarmBackupManifest(formatVersion: 3,
                                                 createdAt: Date(),
                                                 appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
                                                 includesAudio: true,
-                                                includesOccurrences: true)
+                                                includesOccurrences: true,
+                                                includesRuntimeState: true)
         try write(manifest, to: folder.appendingPathComponent("manifest.json"))
         try write(exportedAlarms, to: folder.appendingPathComponent("alarms.json"))
         try write(exportedAudios, to: folder.appendingPathComponent("imported-audios.json"))
         try write(store.occurrences, to: folder.appendingPathComponent("occurrences.json"))
+        try write(SharedAlarmRuntimeState(pauseAllUntil: store.pauseAllUntil),
+                  to: folder.appendingPathComponent("runtime.json"))
         return folder
     }
 
@@ -176,6 +184,7 @@ enum BackupManager {
         let backupAlarms = contents.alarms
         let backupAudios = contents.audios
         let backupOccurrences = contents.occurrences
+        let backupRuntimeState = contents.runtimeState
         let fm = FileManager.default
         let storage = store.sharedStorage
         var pathMap: [UUID: String] = [:]
@@ -220,7 +229,8 @@ enum BackupManager {
         case .replace:
             store.replaceDataFromBackup(alarms: restoredAlarms,
                                         importedAudios: restoredAudios,
-                                        occurrences: backupOccurrences)
+                                        occurrences: backupOccurrences,
+                                        runtimeState: backupRuntimeState)
         case .merge:
             var alarmMap = Dictionary(uniqueKeysWithValues: store.alarms.map { ($0.id, $0) })
             restoredAlarms.forEach { alarmMap[$0.id] = $0 }
@@ -228,9 +238,16 @@ enum BackupManager {
             restoredAudios.forEach { audioMap[$0.id] = $0 }
             var occurrenceMap = Dictionary(uniqueKeysWithValues: store.occurrences.map { ($0.id, $0) })
             backupOccurrences.forEach { occurrenceMap[$0.id] = $0 }
+            let mergedRuntimeState: SharedAlarmRuntimeState
+            if let currentPause = store.pauseAllUntil, currentPause > Date() {
+                mergedRuntimeState = SharedAlarmRuntimeState(pauseAllUntil: currentPause)
+            } else {
+                mergedRuntimeState = backupRuntimeState
+            }
             store.replaceDataFromBackup(alarms: Array(alarmMap.values),
                                         importedAudios: Array(audioMap.values),
-                                        occurrences: Array(occurrenceMap.values).sorted { $0.scheduledDate < $1.scheduledDate })
+                                        occurrences: Array(occurrenceMap.values).sorted { $0.scheduledDate < $1.scheduledDate },
+                                        runtimeState: mergedRuntimeState)
         }
     }
 
@@ -239,6 +256,7 @@ enum BackupManager {
         let alarms: [AlarmItem]
         let audios: [ImportedAudio]
         let occurrences: [AlarmOccurrence]
+        let runtimeState: SharedAlarmRuntimeState
     }
 
     private static func loadContents(from folder: URL) throws -> BackupContents {
@@ -252,13 +270,14 @@ enum BackupManager {
             throw BackupError.invalidBackup(L("Required backup files are missing"))
         }
         let manifest = try read(MusicAlarmBackupManifest.self, from: manifestURL)
-        guard manifest.formatVersion == 1 || manifest.formatVersion == 2 else {
+        guard manifest.formatVersion == 1 || manifest.formatVersion == 2 || manifest.formatVersion == 3 else {
             throw BackupError.invalidBackup(L("Unsupported backup format"))
         }
         let alarms = try read([AlarmItem].self, from: alarmsURL)
         let audios = try read([ImportedAudio].self, from: audiosURL)
         let occurrencesURL = folder.appendingPathComponent("occurrences.json")
         let occurrences: [AlarmOccurrence]
+        let runtimeState: SharedAlarmRuntimeState
         if manifest.formatVersion >= 2 {
             guard fm.fileExists(atPath: occurrencesURL.path) else {
                 throw BackupError.invalidBackup(L("Occurrence history is missing"))
@@ -267,6 +286,15 @@ enum BackupManager {
         } else {
             occurrences = []
         }
+        if manifest.formatVersion >= 3 && manifest.includesRuntimeState {
+            let runtimeURL = folder.appendingPathComponent("runtime.json")
+            guard fm.fileExists(atPath: runtimeURL.path) else {
+                throw BackupError.invalidBackup(L("Runtime state is missing"))
+            }
+            runtimeState = try read(SharedAlarmRuntimeState.self, from: runtimeURL)
+        } else {
+            runtimeState = SharedAlarmRuntimeState(pauseAllUntil: nil)
+        }
         for audio in audios {
             let source = folder.appendingPathComponent(audio.urlString)
             guard isContained(source, in: folder) else {
@@ -274,7 +302,8 @@ enum BackupManager {
             }
         }
         return BackupContents(manifest: manifest, alarms: alarms,
-                              audios: audios, occurrences: occurrences)
+                              audios: audios, occurrences: occurrences,
+                              runtimeState: runtimeState)
     }
 
     private static func write<T: Encodable>(_ value: T, to url: URL) throws {

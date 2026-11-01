@@ -192,3 +192,24 @@
 "Confirmation word" = "Confirmation word";
 "Pause preview" = "Pause preview";
 "Delete audio" = "Delete audio";
+
+"System" = "النظام";
+"Light" = "فاتح";
+"Dark" = "داكن";
+"Dawn Flow" = "تدفق الفجر";
+"Dracula" = "Dracula";
+"Nord" = "Nord";
+"Catppuccin" = "Catppuccin";
+"Theme" = "السمة";
+"Pause today" = "إيقاف اليوم";
+"Pause for 1 hour" = "إيقاف لمدة ساعة";
+"Pause alarms" = "إيقاف المنبهات";
+"Resume all alarms" = "استئناف جميع المنبهات";
+"All alarms paused until %@" = "تم إيقاف جميع المنبهات حتى %@";
+"Temporarily disabled" = "معطل مؤقتًا";
+"• Temporarily disabled" = "• معطل مؤقتًا";
+"Resume alarm" = "استئناف المنبه";
+"For 1 hour" = "لمدة ساعة";
+"Until tomorrow" = "حتى الغد";
+"Temporarily disable" = "تعطيل مؤقت";
+"Runtime state is missing" = "حالة التشغيل مفقودة";

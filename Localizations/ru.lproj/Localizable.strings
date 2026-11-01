@@ -192,3 +192,24 @@
 "Confirmation word" = "Confirmation word";
 "Pause preview" = "Pause preview";
 "Delete audio" = "Delete audio";
+
+"System" = "Системная";
+"Light" = "Светлая";
+"Dark" = "Тёмная";
+"Dawn Flow" = "Поток рассвета";
+"Dracula" = "Dracula";
+"Nord" = "Nord";
+"Catppuccin" = "Catppuccin";
+"Theme" = "Тема";
+"Pause today" = "Приостановить сегодня";
+"Pause for 1 hour" = "Приостановить на 1 час";
+"Pause alarms" = "Приостановить будильники";
+"Resume all alarms" = "Возобновить все будильники";
+"All alarms paused until %@" = "Все будильники приостановлены до %@";
+"Temporarily disabled" = "Временно отключён";
+"• Temporarily disabled" = "• Временно отключён";
+"Resume alarm" = "Возобновить будильник";
+"For 1 hour" = "На 1 час";
+"Until tomorrow" = "До завтра";
+"Temporarily disable" = "Временно отключить";
+"Runtime state is missing" = "Отсутствует состояние выполнения";

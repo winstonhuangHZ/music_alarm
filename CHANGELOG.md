@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.18.0 - unreleased
+
+### Themes, temporary pauses, and shared runtime state
+
+- Added System, Light, Dark, Dawn Flow, Dracula, Nord, and Catppuccin themes.
+- Added state-aware animated gradients for idle, upcoming, paused, ringing, and confirmation states.
+- Added reduced-motion support for the animated background.
+- Added pause today, pause for one hour, resume all alarms, and per-alarm temporary disable actions.
+- Persisted global pause state in shared `runtime.json` so app copies use the same pause state.
+- Added runtime state to format 3 backups while keeping format 1 and 2 backups readable.
+- Merge restore preserves a currently active local pause before considering the backup pause state.
+- Added smoke coverage for pause behavior, runtime persistence, and runtime backup restore.
+
 ## 2.17.0 - unreleased
 
 ### Reliability, accessibility, and verification

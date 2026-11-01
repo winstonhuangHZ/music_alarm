@@ -19,6 +19,25 @@ struct SettingsView: View {
                 Toggle(L("Hide the main window on launch"), isOn: $settings.hideMainWindowOnLaunch)
                 Toggle(L("Show Music Alarm in the menu bar"), isOn: $settings.showMenuBarItem)
                 Toggle(L("Copy imported audio into the Music Alarm library"), isOn: $settings.copyImportedAudioToLibrary)
+                Picker(L("Theme"), selection: $settings.themeChoice) {
+                    ForEach(ThemeChoice.allCases) { choice in
+                        Text(choice.title).tag(choice)
+                    }
+                }
+                if store.isPausedForAll {
+                    HStack {
+                        Text(String(format: L("All alarms paused until %@"), dateString(store.pauseAllUntil ?? Date())))
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                        Spacer()
+                        Button(L("Resume all alarms")) { store.resumeAll() }
+                    }
+                } else {
+                    HStack {
+                        Button(L("Pause today")) { store.pauseToday() }
+                        Button(L("Pause for 1 hour")) { store.pauseFor(hours: 1) }
+                    }
+                }
                 Picker(L("Fallback sound"), selection: $settings.fallbackSoundChoice) {
                     ForEach(FallbackSoundChoice.allCases) { choice in
                         Text(choice.title).tag(choice)

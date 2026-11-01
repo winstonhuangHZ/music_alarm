@@ -192,3 +192,24 @@
 "Confirmation word" = "Confirmation word";
 "Pause preview" = "Pause preview";
 "Delete audio" = "Delete audio";
+
+"System" = "系統";
+"Light" = "淺色";
+"Dark" = "深色";
+"Dawn Flow" = "晨曦流動";
+"Dracula" = "Dracula";
+"Nord" = "Nord";
+"Catppuccin" = "Catppuccin";
+"Theme" = "主題";
+"Pause today" = "暫停今天";
+"Pause for 1 hour" = "暫停 1 小時";
+"Pause alarms" = "暫停鬧鐘";
+"Resume all alarms" = "恢復全部鬧鐘";
+"All alarms paused until %@" = "全部鬧鐘已暫停至 %@";
+"Temporarily disabled" = "暫時停用";
+"• Temporarily disabled" = "• 暫時停用";
+"Resume alarm" = "恢復鬧鐘";
+"For 1 hour" = "1 小時";
+"Until tomorrow" = "直到明天";
+"Temporarily disable" = "暫時停用";
+"Runtime state is missing" = "執行狀態缺失";

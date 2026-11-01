@@ -104,14 +104,25 @@ struct SharedAlarmStorageSmoke {
         backupAlarm.label = "Backup test"
         backupAlarm.repeatType = .daily
         backupSourceStore.addAlarm(backupAlarm)
+        backupSourceStore.pauseFor(hours: 2)
         let backupFolder = try BackupManager.export(store: backupSourceStore, to: backupParent)
+        let backupPreview = try BackupManager.preview(from: backupFolder)
+        precondition(backupPreview.manifest.formatVersion == 3)
+        precondition(backupPreview.manifest.includesRuntimeState)
+        precondition(backupPreview.runtimeState.pauseAllUntil != nil)
+        precondition(FileManager.default.fileExists(atPath: backupFolder.appendingPathComponent("runtime.json").path))
         let restoredRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("music-alarm-restored-\(UUID().uuidString)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: restoredRoot) }
         let restoredStore = AlarmStore(storage: SharedAlarmStorage(rootURL: restoredRoot))
         try BackupManager.importBackup(from: backupFolder, into: restoredStore)
         precondition(restoredStore.alarms.first?.label == "Backup test")
+        precondition((restoredStore.pauseAllUntil ?? Date()) > Date())
         precondition(FileManager.default.fileExists(atPath: backupFolder.appendingPathComponent("occurrences.json").path))
+
+        restoredStore.pauseFor(hours: 1)
+        try BackupManager.importBackup(from: backupFolder, into: restoredStore, conflictPolicy: .merge)
+        precondition((restoredStore.pauseAllUntil ?? Date()) > Date())
 
         var failedAlarm = AlarmItem()
         failedAlarm.label = "Failure test"
@@ -146,6 +157,35 @@ struct SharedAlarmStorageSmoke {
         precondition(healthStore.removeOrphanedManagedAudioFiles() == 1)
         precondition(healthStore.deduplicateAudioLibrary() == 1)
         precondition(healthStore.importedAudios.count == 1)
+
+        let pauseRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("music-alarm-pause-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: pauseRoot) }
+        let pauseStore = AlarmStore(storage: SharedAlarmStorage(rootURL: pauseRoot))
+        var pauseAlarm = AlarmItem()
+        pauseAlarm.repeatType = .once
+        pauseAlarm.scheduledDate = Date().addingTimeInterval(3600)
+        pauseStore.addAlarm(pauseAlarm)
+        precondition(pauseStore.nextAlarmFire(at: Date()).date != nil)
+        pauseStore.pauseFor(hours: 1)
+        precondition(pauseStore.isPausedForAll)
+        precondition((pauseStore.pauseAllUntil ?? Date()) > Date())
+        precondition(pauseStore.nextAlarmFire(at: Date()).date == nil)
+        let reloadedPauseStore = AlarmStore(storage: SharedAlarmStorage(rootURL: pauseRoot))
+        precondition(reloadedPauseStore.pauseAllUntil == pauseStore.pauseAllUntil)
+        reloadedPauseStore.resumeAll()
+        precondition(!reloadedPauseStore.isPausedForAll)
+        reloadedPauseStore.pauseToday()
+        precondition(reloadedPauseStore.isPausedForAll)
+        precondition((reloadedPauseStore.pauseAllUntil ?? Date()) > Date())
+        reloadedPauseStore.resumeAll()
+        reloadedPauseStore.temporarilyDisable(id: pauseAlarm.id,
+                                              until: Date().addingTimeInterval(3600))
+        precondition(!reloadedPauseStore.isAlarmEnabled(reloadedPauseStore.alarms[0]))
+        precondition(reloadedPauseStore.nextAlarmFire(at: Date()).date == nil)
+        reloadedPauseStore.resumeAlarm(id: pauseAlarm.id)
+        precondition(reloadedPauseStore.isAlarmEnabled(reloadedPauseStore.alarms[0]))
+        precondition(reloadedPauseStore.nextAlarmFire(at: Date()).date != nil)
 
         print("shared storage smoke test passed")
     }
