@@ -45,7 +45,7 @@ struct AlarmPopupView: View {
     }
 
     private var alarmIcon: some View {
-        Text("⏰")
+        Image(systemName: "alarm.fill")
             .font(.system(size: 46))
             .foregroundColor(.red)
             .scaleEffect(pulse ? 1.2 : 0.92)
@@ -75,7 +75,7 @@ struct AlarmPopupView: View {
         VStack(spacing: 6) {
             if alarm.tracks.isEmpty {
                 HStack(spacing: 6) {
-                    Text("⚠️")
+                    Image(systemName: "exclamationmark.triangle.fill")
                     Text(alarm.audioDisplayName)
                 }
                 .font(.caption)
@@ -86,8 +86,8 @@ struct AlarmPopupView: View {
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundColor(Color.secondary)
-                    Text(alarm.hasSound ? alarm.sourceSummary : "⚠️")
-                        .font(.system(size: 11))
+                    Image(systemName: alarm.hasSound ? "music.note.list" : "exclamationmark.triangle.fill")
+                        .font(.system(size: 11, weight: .medium))
                     Text(alarm.audioDisplayName)
                         .font(.caption)
                         .foregroundColor(Color.secondary)
@@ -103,16 +103,16 @@ struct AlarmPopupView: View {
                                         .font(.system(size: 10, weight: .semibold))
                                         .foregroundColor(Color.secondary)
                                         .frame(width: 14)
-                                    Text(track.icon)
-                                        .font(.system(size: 11))
+                                    Image(systemName: track.icon)
+                                        .font(.system(size: 11, weight: .medium))
                                     Text(track.displayName)
                                         .font(.caption)
                                         .foregroundColor(Color.secondary)
                                         .lineLimit(1)
                                     Spacer()
                                     if idx == 0 {
-                                        Text("🔊")
-                                            .font(.system(size: 10))
+                                        Image(systemName: "speaker.wave.2.fill")
+                                            .font(.system(size: 10, weight: .medium))
                                     }
                                 }
                             }
@@ -135,7 +135,7 @@ struct AlarmPopupView: View {
             HStack(spacing: 18) {
             Button(action: { self.onSnooze(self.alarm) }) {
                 HStack(spacing: 8) {
-                    Text("💤")
+                    Image(systemName: "moon.zzz.fill")
                     Text(String(format: L("Snooze %d min"), alarm.snoozeMinutes))
                 }
                 .font(.headline)
@@ -150,7 +150,7 @@ struct AlarmPopupView: View {
 
             Button(action: { self.onStop(self.alarm) }) {
                 HStack(spacing: 8) {
-                    Text("⏹")
+                    Image(systemName: "stop.fill")
                     Text(L("Stop"))
                 }
                 .font(.headline)
@@ -184,7 +184,7 @@ struct AlarmPopupView: View {
         case .hold:
             Button(action: {}) {
                 HStack(spacing: 8) {
-                    Text("✅")
+                    Image(systemName: "checkmark.circle.fill")
                     Text(L("Hold for 3 seconds"))
                 }
                 .font(.headline)
@@ -221,7 +221,7 @@ struct AlarmPopupView: View {
                 NSApp.activate(ignoringOtherApps: true)
             }) {
                 HStack(spacing: 8) {
-                    Text("🪟")
+                    Image(systemName: "macwindow")
                     Text(L("Confirm from the main window"))
                 }
                 .font(.headline)
@@ -239,7 +239,7 @@ struct AlarmPopupView: View {
     private var confirmationButton: some View {
         Button(action: { self.onConfirmWake(self.alarm) }) {
             HStack(spacing: 8) {
-                Text("✅")
+                Image(systemName: "checkmark.circle.fill")
                 Text(L("I am really awake"))
             }
             .font(.headline)

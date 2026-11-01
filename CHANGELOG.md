@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.21.0 - unreleased
+
+### Interface polish
+
+- Replaced decorative emoji in the main window, alarm rows, playlist editor, audio library, and alarm popup with native SF Symbols.
+- Added a visible Settings button to the main window footer while keeping the menu command available.
+- Rebuilt the Settings window as a wider, resizable, vertically scrollable layout with stable label and control columns.
+- Fixed settings labels being clipped in Chinese and English layouts and completed the visible Simplified Chinese settings and backup translations.
+- Added the application name to every localization bundle for status item accessibility text.
+
 ## 2.20.3 - unreleased
 
 ### Application icon proportions

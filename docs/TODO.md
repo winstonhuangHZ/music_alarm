@@ -8,6 +8,13 @@ are removed after their version is committed and pushed.
 暂无 2.18.0 之前已确定且未完成的项目。后续功能候选会在确认范围后加入这里，完成后从 Remaining
 移动到对应版本的 Completed 小节。
 
+## Completed in 2.21.0
+
+- Replaced user-facing emoji controls and status marks with native SF Symbols.
+- Added a main-window Settings entry point.
+- Reworked Settings into a resizable scrolling layout with fixed label and control columns.
+- Completed the visible Simplified Chinese settings and backup translations and kept all localization bundles key-complete.
+
 ## Completed in 2.20.3
 
 - Reduced the application icon artwork scale and added transparent outer margin so it no longer appears oversized beside native macOS icons.

@@ -57,8 +57,8 @@ enum AudioTrack: Identifiable, Codable, Equatable {
 
     var icon: String {
         switch self {
-        case .local: return "🎵"
-        case .unavailable: return "⚠️"
+        case .local: return "music.note"
+        case .unavailable: return "exclamationmark.triangle.fill"
         }
     }
 

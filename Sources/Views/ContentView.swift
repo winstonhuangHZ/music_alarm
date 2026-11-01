@@ -97,7 +97,7 @@ struct ContentView: View {
 
         return VStack(spacing: 4) {
             HStack(spacing: 6) {
-                Text("⏳")
+                Image(systemName: "hourglass")
                 if hasNext {
                     Text(String(format: L("Next alarm in %@"), countdownText))
                 } else {
@@ -109,7 +109,7 @@ struct ContentView: View {
 
             if hasDetail {
                 HStack(spacing: 6) {
-                    Text("🎵")
+                    Image(systemName: "music.note")
                     Text(detailText)
                 }
                 .font(.caption)
@@ -159,8 +159,8 @@ struct ContentView: View {
 
     private var emptyState: some View {
         VStack(spacing: 10) {
-            Text("⏰")
-                .font(.system(size: 44))
+            Image(systemName: "alarm")
+                .font(.system(size: 40, weight: .medium))
                 .foregroundColor(Color.secondary)
             Text(L("No alarms yet"))
                 .font(.system(size: 18, weight: .medium))
@@ -206,15 +206,23 @@ struct ContentView: View {
             }
             Button(action: { self.engine.testAlarm() }) {
                 HStack(spacing: 6) {
-                    Text("🔊")
+                    Image(systemName: "speaker.wave.2.fill")
                     Text(L("Test Alarm"))
                 }
             }
             .buttonStyle(BorderedButtonStyle())
             .accessibilityLabel(L("Test Alarm"))
+            Button(action: { (NSApp.delegate as? AppDelegate)?.openSettings() }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "gearshape")
+                    Text(L("Settings"))
+                }
+            }
+            .buttonStyle(BorderedButtonStyle())
+            .accessibilityLabel(L("Settings"))
             Button(action: { self.showNewAlarm() }) {
                 HStack(spacing: 8) {
-                    Text("➕")
+                    Image(systemName: "plus")
                     Text(L("Add Alarm"))
                 }
                 .font(.headline)
@@ -248,7 +256,7 @@ struct ContentView: View {
     /// In-app language switcher picker (bottom-left of the footer).
     private var languagePicker: some View {
         HStack(spacing: 8) {
-            Text("🌐")
+            Image(systemName: "globe")
                 .font(.system(size: 14))
                 .foregroundColor(Color.secondary)
             Picker(selection: $languageManager.selectedLanguage, label: EmptyView()) {

@@ -11,8 +11,8 @@ struct AudioBarView: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Text("🎵")
-                .font(.system(size: 16))
+            Image(systemName: "music.note.list")
+                .font(.system(size: 16, weight: .medium))
             VStack(alignment: .leading, spacing: 2) {
                 Text(L("Music Library"))
                     .font(.headline)
@@ -24,7 +24,7 @@ struct AudioBarView: View {
             Spacer()
             if let currentName = currentPreviewName {
                 HStack(spacing: 5) {
-                    Text("🔊")
+                    Image(systemName: "speaker.wave.2.fill")
                     Text(currentName)
                         .font(.caption)
                         .lineLimit(1)
@@ -139,8 +139,8 @@ struct MusicLibraryPanel: View {
     private var emptyState: some View {
         VStack(spacing: 10) {
             Spacer()
-            Text("🎵")
-                .font(.system(size: 36))
+            Image(systemName: "music.note.list")
+                .font(.system(size: 34, weight: .medium))
             Text(L("No music imported. Click “Import Music” to add .mp3 / .m4a files."))
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -159,7 +159,10 @@ struct MusicLibraryPanel: View {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(isCurrent ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.12))
                 .frame(width: 34, height: 34)
-                .overlay(Text(isCurrent ? "🔊" : "🎵"))
+                .overlay(
+                    Image(systemName: isCurrent ? "speaker.wave.2.fill" : "music.note")
+                        .font(.system(size: 14, weight: .medium))
+                )
             VStack(alignment: .leading, spacing: 3) {
                 Text(audio.name)
                     .font(.subheadline.weight(.medium))
