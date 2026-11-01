@@ -1,18 +1,43 @@
 import Foundation
 import AppKit
 import Combine
+import AVFoundation
+import CryptoKit
 
-/// A user-imported audio file (path is persisted; playback resolves it lazily).
+/// A user-imported audio file stored in the shared application data directory.
 struct ImportedAudio: Identifiable, Codable, Equatable {
     var id = UUID()
     var name: String
     var urlString: String
+    var isManagedCopy: Bool = true
+    var contentHash: String?
 
     var url: URL { URL(fileURLWithPath: urlString) }
     var fileExists: Bool { FileManager.default.fileExists(atPath: urlString) }
+
+    private enum CodingKeys: String, CodingKey { case id, name, urlString, isManagedCopy, contentHash }
+
+    init(id: UUID = UUID(), name: String, urlString: String, isManagedCopy: Bool = true,
+         contentHash: String? = nil) {
+        self.id = id
+        self.name = name
+        self.urlString = urlString
+        self.isManagedCopy = isManagedCopy
+        self.contentHash = contentHash
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try c.decode(String.self, forKey: .name)
+        urlString = try c.decode(String.self, forKey: .urlString)
+        isManagedCopy = try c.decodeIfPresent(Bool.self, forKey: .isManagedCopy) ?? true
+        contentHash = try c.decodeIfPresent(String.self, forKey: .contentHash)
+    }
 }
 
-/// Central data store: alarms + imported audio library, persisted in UserDefaults.
+/// Central data store: alarms + imported audio library shared across app
+/// versions and executable locations.
 final class AlarmStore: ObservableObject {
     @Published var alarms: [AlarmItem] {
         didSet { save() }
@@ -20,99 +45,456 @@ final class AlarmStore: ObservableObject {
     @Published var importedAudios: [ImportedAudio] {
         didSet { save() }
     }
+    @Published var occurrences: [AlarmOccurrence] {
+        didSet { save() }
+    }
+    @Published var pauseAllUntil: Date? {
+        didSet { saveRuntimeState() }
+    }
 
-    private let alarmsKey = "MusicAlarm.alarms.v1"
-    private let audiosKey = "MusicAlarm.importedAudios.v1"
+    private let storage: SharedAlarmStorage
+    var sharedStorage: SharedAlarmStorage { storage }
+    private let legacyAlarmsKey = "MusicAlarm.alarms.v1"
+    private let legacyAudiosKey = "MusicAlarm.importedAudios.v1"
+    private var alarmsNeedRepair = false
+    private var importedAudiosNeedRepair = false
+    private var occurrencesNeedRepair = false
 
-    init() {
-        var loadedAlarms: [AlarmItem] = []
-        if let data = UserDefaults.standard.data(forKey: alarmsKey),
-           let decoded = try? JSONDecoder().decode([AlarmItem].self, from: data) {
-            loadedAlarms = decoded
-        }
-        // Migrate v2.0 single-audio data → v2.1 tracks array
-        for i in loadedAlarms.indices {
-            loadedAlarms[i].migrateIfNeeded()
-        }
-        alarms = loadedAlarms
+    init(storage: SharedAlarmStorage = .shared) {
+        self.storage = storage
 
-        if let data = UserDefaults.standard.data(forKey: audiosKey),
-           let decoded = try? JSONDecoder().decode([ImportedAudio].self, from: data) {
-            importedAudios = decoded
+        if storage.containsSharedData() {
+            let loadedAlarms = storage.loadResult([AlarmItem].self, from: storage.alarmsURL)
+            let loadedAudios = storage.loadResult([ImportedAudio].self, from: storage.importedAudiosURL)
+            let loadedOccurrences = storage.loadResult([AlarmOccurrence].self, from: storage.occurrencesURL)
+            let loadedRuntime = storage.loadResult(SharedAlarmRuntimeState.self, from: storage.runtimeURL)
+
+            alarmsNeedRepair = loadedAlarms.status == .invalid
+            importedAudiosNeedRepair = loadedAudios.status == .invalid
+            occurrencesNeedRepair = loadedOccurrences.status == .invalid
+            alarms = loadedAlarms.value ?? []
+            importedAudios = loadedAudios.value ?? []
+            occurrences = loadedOccurrences.value ?? []
+            pauseAllUntil = loadedRuntime.value?.pauseAllUntil
+
+            migrateLoadedData()
+
+            // A valid backup can repair a corrupted primary file. Never write an
+            // empty array merely because a file was unreadable.
+            if loadedAlarms.status == .recoveredFromBackup, let value = loadedAlarms.value {
+                _ = storage.save(value, to: storage.alarmsURL)
+                alarmsNeedRepair = false
+            }
+            if loadedAudios.status == .recoveredFromBackup, let value = loadedAudios.value {
+                _ = storage.save(value, to: storage.importedAudiosURL)
+                importedAudiosNeedRepair = false
+            }
+            if loadedOccurrences.status == .recoveredFromBackup, let value = loadedOccurrences.value {
+                _ = storage.save(value, to: storage.occurrencesURL)
+                occurrencesNeedRepair = false
+            }
+            if loadedRuntime.status == .recoveredFromBackup, let value = loadedRuntime.value {
+                _ = storage.save(value, to: storage.runtimeURL)
+            }
         } else {
-            importedAudios = []
+            let legacyAlarms = Self.loadLegacy([AlarmItem].self, key: legacyAlarmsKey)
+            var loadedAlarms = legacyAlarms.value ?? []
+            for i in loadedAlarms.indices {
+                loadedAlarms[i].migrateIfNeeded()
+            }
+            var loadedAudios = Self.loadLegacy([ImportedAudio].self, key: legacyAudiosKey).value ?? []
+            storage.migrateLegacyAudio(alarms: &loadedAlarms, importedAudios: &loadedAudios)
+            alarms = loadedAlarms
+            importedAudios = loadedAudios
+            occurrences = []
+            pauseAllUntil = nil
+
+            // Do not replace unreadable legacy data with empty shared files.
+            if !legacyAlarms.hadData || legacyAlarms.value != nil {
+                save()
+            } else {
+                NSLog("AlarmStore: preserved unreadable legacy alarm data; no empty migration was written")
+            }
+        }
+
+        // Preserve the behavior of pre-2.10 alarms that already opted into
+        // wake confirmation while making the feature explicitly controllable
+        // for new installations from Settings.
+        if alarms.contains(where: { $0.requiresWakeConfirmation }) {
+            AppSettings.shared.wakeConfirmationEnabled = true
         }
     }
 
     func save() {
-        if let data = try? JSONEncoder().encode(alarms) {
-            UserDefaults.standard.set(data, forKey: alarmsKey)
+        if !alarmsNeedRepair {
+            _ = storage.save(alarms, to: storage.alarmsURL)
+        } else {
+            NSLog("AlarmStore: skipped saving unreadable alarms until the user changes the alarm list")
         }
-        if let data = try? JSONEncoder().encode(importedAudios) {
-            UserDefaults.standard.set(data, forKey: audiosKey)
+        if !importedAudiosNeedRepair {
+            _ = storage.save(importedAudios, to: storage.importedAudiosURL)
+        } else {
+            NSLog("AlarmStore: skipped saving unreadable audio library until the user changes it")
         }
-        // Force a synchronous flush to disk so alarms / imported music survive
-        // an immediate app quit or crash right after a mutation.
-        UserDefaults.standard.synchronize()
+        if !occurrencesNeedRepair {
+            _ = storage.save(occurrences, to: storage.occurrencesURL)
+        } else {
+            NSLog("AlarmStore: skipped saving unreadable occurrence history until the user changes it")
+        }
+    }
+
+    /// Reloads the shared files so separate app copies can converge when one
+    /// of them changes the alarm list. Invalid files are left untouched.
+    func reloadFromSharedStorage() {
+        let loadedAlarms = storage.loadResult([AlarmItem].self, from: storage.alarmsURL)
+        let loadedAudios = storage.loadResult([ImportedAudio].self, from: storage.importedAudiosURL)
+        let loadedOccurrences = storage.loadResult([AlarmOccurrence].self, from: storage.occurrencesURL)
+        let loadedRuntime = storage.loadResult(SharedAlarmRuntimeState.self, from: storage.runtimeURL)
+
+        if let value = loadedAlarms.value {
+            alarmsNeedRepair = false
+            alarms = value
+        }
+        if let value = loadedAudios.value {
+            importedAudiosNeedRepair = false
+            importedAudios = value
+        }
+        if let value = loadedOccurrences.value {
+            occurrencesNeedRepair = false
+            occurrences = value
+        }
+        if let value = loadedRuntime.value {
+            pauseAllUntil = value.pauseAllUntil
+        }
+        migrateLoadedData()
     }
 
     // MARK: - Alarms
 
     func addAlarm(_ alarm: AlarmItem) {
         alarms.append(alarm)
+        persistAlarmsAfterUserChange()
     }
 
     func removeAlarm(_ alarm: AlarmItem) {
         alarms.removeAll { $0.id == alarm.id }
+        persistAlarmsAfterUserChange()
+    }
+
+    func replaceDataFromBackup(alarms: [AlarmItem], importedAudios: [ImportedAudio], occurrences: [AlarmOccurrence] = [], runtimeState: SharedAlarmRuntimeState = SharedAlarmRuntimeState(pauseAllUntil: nil)) {
+        alarmsNeedRepair = false
+        importedAudiosNeedRepair = false
+        self.alarms = alarms
+        self.importedAudios = importedAudios
+        self.occurrences = occurrences
+        self.pauseAllUntil = runtimeState.pauseAllUntil
+        persistAlarmsAfterUserChange()
+        persistImportedAudiosAfterUserChange()
+        persistOccurrencesAfterUserChange()
     }
 
     /// Replaces an existing alarm in-place with an edited copy.
     func updateAlarm(_ alarm: AlarmItem) {
         guard let idx = alarms.firstIndex(where: { $0.id == alarm.id }) else { return }
-        // Preserve runtime state (snooze / last-fire dedup flag) when editing.
+        let old = alarms[idx]
         var updated = alarm
-        updated.snoozeUntil = alarms[idx].snoozeUntil
-        updated.lastFiredKey = alarms[idx].lastFiredKey
+        let scheduleChanged = old.hour != alarm.hour
+            || old.minute != alarm.minute
+            || old.repeatType != alarm.repeatType
+            || old.scheduledDate != alarm.scheduledDate
+            || old.weekdays != alarm.weekdays
+        if scheduleChanged {
+            updated.snoozeUntil = nil
+            updated.lastFiredKey = ""
+            updated.skipNextOccurrenceKey = ""
+            updated.wakeConfirmationState = .none
+            updated.wakeStartedAt = nil
+            updated.wakeStoppedAt = nil
+            updated.wakeConfirmedAt = nil
+            updated.wakeConfirmationDeadline = nil
+            updated.wakeOccurrenceID = nil
+        } else {
+            updated.snoozeUntil = old.snoozeUntil
+            updated.lastFiredKey = old.lastFiredKey
+            updated.skipNextOccurrenceKey = old.skipNextOccurrenceKey
+            if old.requiresWakeConfirmation != alarm.requiresWakeConfirmation {
+                updated.wakeConfirmationState = .none
+                updated.wakeStartedAt = nil
+                updated.wakeStoppedAt = nil
+                updated.wakeConfirmedAt = nil
+                updated.wakeConfirmationDeadline = nil
+                updated.wakeOccurrenceID = nil
+            } else {
+                updated.wakeStartedAt = old.wakeStartedAt
+                updated.wakeStoppedAt = old.wakeStoppedAt
+                updated.wakeConfirmedAt = old.wakeConfirmedAt
+                updated.wakeConfirmationDeadline = old.wakeConfirmationDeadline
+                updated.wakeOccurrenceID = old.wakeOccurrenceID
+            }
+        }
         alarms[idx] = updated
+        persistAlarmsAfterUserChange()
     }
 
     func toggleEnabled(id: UUID, enabled: Bool) {
         guard let idx = alarms.firstIndex(where: { $0.id == id }) else { return }
         alarms[idx].isEnabled = enabled
+        if enabled { alarms[idx].temporaryDisabledUntil = nil }
         if !enabled {
             alarms[idx].snoozeUntil = nil // cancels a pending snooze
         }
+        persistAlarmsAfterUserChange()
+    }
+
+    func isAlarmEnabled(_ alarm: AlarmItem, now: Date = Date()) -> Bool {
+        guard alarm.isEnabled else { return false }
+        if let pauseAllUntil, pauseAllUntil > now { return false }
+        if let until = alarm.temporaryDisabledUntil, until > now { return false }
+        return true
+    }
+
+    var isPausedForAll: Bool {
+        if let pauseAllUntil { return pauseAllUntil > Date() }
+        return false
+    }
+
+    func pauseToday() {
+        let calendar = Calendar.current
+        pauseAllUntil = calendar.date(byAdding: .day, value: 1,
+                                      to: calendar.startOfDay(for: Date()))
+    }
+
+    func pauseFor(hours: Int) {
+        pauseAllUntil = Date().addingTimeInterval(TimeInterval(max(1, hours) * 3600))
+    }
+
+    func resumeAll() {
+        pauseAllUntil = nil
+    }
+
+    func temporarilyDisable(id: UUID, until: Date) {
+        guard let index = alarms.firstIndex(where: { $0.id == id }) else { return }
+        alarms[index].temporaryDisabledUntil = until
+        persistAlarmsAfterUserChange()
+    }
+
+    func resumeAlarm(id: UUID) {
+        guard let index = alarms.firstIndex(where: { $0.id == id }) else { return }
+        alarms[index].temporaryDisabledUntil = nil
+        persistAlarmsAfterUserChange()
     }
 
     func markFired(at index: Int, now: Date) {
-        alarms[index].lastFiredKey = AlarmTimeUtil.fireKey(for: now)
-        alarms[index].snoozeUntil = nil
-        if alarms[index].repeatType == .once {
-            alarms[index].isEnabled = false
-        }
+        markPlaybackStarted(id: alarms[index].id, occurrence: now, isSnooze: false)
     }
 
-    func snooze(_ alarm: AlarmItem, minutes: Int = 5) {
+    /// Records that playback or fallback actually started for an occurrence.
+    /// The alarm is not consumed merely because the engine noticed it was due.
+    @discardableResult
+    func markPlaybackStarted(id: UUID, occurrence: Date, isSnooze: Bool,
+                             usedFallback: Bool = false,
+                             attemptedTracks: [String] = []) -> UUID? {
+        guard let index = alarms.firstIndex(where: { $0.id == id }) else { return nil }
+        if !isSnooze {
+            alarms[index].lastFiredKey = AlarmTimeUtil.fireKey(for: occurrence)
+            if alarms[index].skipNextOccurrenceKey == AlarmTimeUtil.fireKey(for: occurrence) {
+                alarms[index].skipNextOccurrenceKey = ""
+            }
+        }
+        alarms[index].snoozeUntil = nil
+        let requiresConfirmation = alarms[index].requiresWakeConfirmation
+            && AppSettings.shared.wakeConfirmationEnabled
+        if requiresConfirmation {
+            let startedAt = Date()
+            alarms[index].wakeStartedAt = startedAt
+            alarms[index].wakeStoppedAt = nil
+            alarms[index].wakeConfirmedAt = nil
+            alarms[index].wakeConfirmationDeadline = AppSettings.shared.wakeConfirmationDeadlineMinutes
+                .flatMap { startedAt.addingTimeInterval(TimeInterval($0 * 60)) }
+            alarms[index].wakeConfirmationState = .pending
+        } else {
+            clearWakeConfirmationState(at: index)
+        }
+        let recordID = UUID()
+        occurrences.append(AlarmOccurrence(id: recordID,
+                                           alarmID: id,
+                                           label: alarms[index].label,
+                                           scheduledDate: occurrence,
+                                           actualStartedAt: Date(),
+                                           timezone: .current,
+                                           isSnooze: isSnooze,
+                                           outcome: .started,
+                                           usedFallback: usedFallback,
+                                           attemptedTracks: attemptedTracks))
+        alarms[index].wakeOccurrenceID = recordID
+        if alarms[index].repeatType == .once && !requiresConfirmation {
+            alarms[index].isEnabled = false
+        }
+        persistAlarmsAfterUserChange()
+        persistOccurrencesAfterUserChange()
+        return recordID
+    }
+
+    /// Records a playback failure and consumes the concrete occurrence so a
+    /// broken file cannot cause an immediate retry loop.
+    func markPlaybackFailed(id: UUID, occurrence: Date, isSnooze: Bool,
+                            reason: String, attemptedTracks: [String] = []) {
+        guard let index = alarms.firstIndex(where: { $0.id == id }) else { return }
+        if !isSnooze {
+            alarms[index].lastFiredKey = AlarmTimeUtil.fireKey(for: occurrence)
+        }
+        alarms[index].snoozeUntil = nil
+        if alarms[index].repeatType == .once { alarms[index].isEnabled = false }
+        occurrences.append(AlarmOccurrence(alarmID: id,
+                                           label: alarms[index].label,
+                                           scheduledDate: occurrence,
+                                           timezone: .current,
+                                           isSnooze: isSnooze,
+                                           outcome: .failed,
+                                           failureReason: reason,
+                                           attemptedTracks: attemptedTracks))
+        persistAlarmsAfterUserChange()
+        persistOccurrencesAfterUserChange()
+    }
+
+    func snooze(_ alarm: AlarmItem, minutes: Int? = nil) {
         guard let idx = alarms.firstIndex(where: { $0.id == alarm.id }) else { return }
-        alarms[idx].snoozeUntil = Date().addingTimeInterval(TimeInterval(minutes * 60))
-        alarms[idx].lastFiredKey = ""
+        let actualMinutes = max(1, minutes ?? alarms[idx].snoozeMinutes)
+        alarms[idx].snoozeUntil = Date().addingTimeInterval(TimeInterval(actualMinutes * 60))
+        // Keep the original occurrence key. Snooze is a continuation of that
+        // occurrence and must not make the base alarm fire a second time.
         alarms[idx].isEnabled = true // re-armed so the snoozed alarm can fire
+        if let occurrenceID = alarms[idx].wakeOccurrenceID {
+            updateOccurrence(id: occurrenceID, outcome: .snoozed, stoppedAt: Date())
+        }
+        persistAlarmsAfterUserChange()
+    }
+
+    func skipNext(id: UUID) {
+        guard let idx = alarms.firstIndex(where: { $0.id == id }) else { return }
+        if alarms[idx].repeatType == .once {
+            alarms[idx].isEnabled = false
+            alarms[idx].snoozeUntil = nil
+        } else {
+            alarms[idx].snoozeUntil = nil
+            if let next = alarms[idx].nextFireDate(from: Date()) {
+                alarms[idx].skipNextOccurrenceKey = AlarmTimeUtil.fireKey(for: next)
+            }
+        }
+        persistAlarmsAfterUserChange()
     }
 
     func stopAlarm(_ alarm: AlarmItem) {
         guard let idx = alarms.firstIndex(where: { $0.id == alarm.id }) else { return }
         alarms[idx].snoozeUntil = nil
+        if alarms[idx].requiresWakeConfirmation && AppSettings.shared.wakeConfirmationEnabled,
+           alarms[idx].wakeConfirmationState == .pending {
+            alarms[idx].wakeConfirmationState = .stoppedWithoutConfirmation
+            alarms[idx].wakeStoppedAt = Date()
+            // Keep a one-shot alarm enabled until the user explicitly confirms
+            // the wake-up from the alarm row.
+            persistAlarmsAfterUserChange()
+            if let occurrenceID = alarms[idx].wakeOccurrenceID {
+                updateOccurrence(id: occurrenceID, outcome: .stopped, stoppedAt: alarms[idx].wakeStoppedAt)
+            }
+            return
+        }
+        if let occurrenceID = alarms[idx].wakeOccurrenceID {
+            updateOccurrence(id: occurrenceID, outcome: .stopped, stoppedAt: Date())
+        }
         if alarms[idx].repeatType == .once {
             alarms[idx].isEnabled = false
         }
+        persistAlarmsAfterUserChange()
+    }
+
+    func confirmWake(id: UUID) {
+        guard let idx = alarms.firstIndex(where: { $0.id == id }),
+              alarms[idx].requiresWakeConfirmation,
+              AppSettings.shared.wakeConfirmationEnabled else { return }
+        if let deadline = alarms[idx].wakeConfirmationDeadline, deadline <= Date() {
+            alarms[idx].wakeConfirmationState = .expired
+            if alarms[idx].repeatType == .once { alarms[idx].isEnabled = false }
+            if let occurrenceID = alarms[idx].wakeOccurrenceID {
+                updateOccurrence(id: occurrenceID, outcome: .expired,
+                                 stoppedAt: alarms[idx].wakeStoppedAt ?? Date())
+            }
+            persistAlarmsAfterUserChange()
+            return
+        }
+        alarms[idx].wakeConfirmationState = .confirmed
+        alarms[idx].wakeConfirmedAt = Date()
+        if let occurrenceID = alarms[idx].wakeOccurrenceID {
+            updateOccurrence(id: occurrenceID, outcome: .confirmed,
+                             stoppedAt: alarms[idx].wakeStoppedAt ?? Date(),
+                             confirmedAt: alarms[idx].wakeConfirmedAt)
+        }
+        if alarms[idx].repeatType == .once {
+            alarms[idx].isEnabled = false
+        }
+        persistAlarmsAfterUserChange()
+    }
+
+    private func clearWakeConfirmationState(at index: Int) {
+        alarms[index].wakeConfirmationState = .none
+        alarms[index].wakeStartedAt = nil
+        alarms[index].wakeStoppedAt = nil
+        alarms[index].wakeConfirmedAt = nil
+        alarms[index].wakeConfirmationDeadline = nil
+    }
+
+    /// Marks overdue wake confirmations as expired and closes one-shot alarms.
+    func reconcileWakeConfirmationStates(now: Date = Date()) {
+        var changed = false
+        for index in alarms.indices {
+            guard let deadline = alarms[index].wakeConfirmationDeadline,
+                  deadline <= now,
+                  alarms[index].wakeConfirmationState == .pending
+                    || alarms[index].wakeConfirmationState == .stoppedWithoutConfirmation else { continue }
+            alarms[index].wakeConfirmationState = .expired
+            if alarms[index].repeatType == .once { alarms[index].isEnabled = false }
+            if let occurrenceID = alarms[index].wakeOccurrenceID {
+                updateOccurrence(id: occurrenceID, outcome: .expired, stoppedAt: alarms[index].wakeStoppedAt ?? now)
+            }
+            changed = true
+        }
+        if changed { persistAlarmsAfterUserChange() }
+    }
+
+    func recentOccurrences(limit: Int = 20) -> [AlarmOccurrence] {
+        Array(occurrences.sorted { $0.scheduledDate > $1.scheduledDate }.prefix(limit))
+    }
+
+    private func updateOccurrence(id: UUID, outcome: AlarmOccurrenceOutcome,
+                                 stoppedAt: Date? = nil, confirmedAt: Date? = nil,
+                                 failureReason: String? = nil) {
+        guard let index = occurrences.firstIndex(where: { $0.id == id }) else { return }
+        occurrences[index].outcome = outcome
+        occurrences[index].stoppedAt = stoppedAt ?? occurrences[index].stoppedAt
+        occurrences[index].confirmedAt = confirmedAt ?? occurrences[index].confirmedAt
+        if let failureReason { occurrences[index].failureReason = failureReason }
+        persistOccurrencesAfterUserChange()
     }
 
     /// The soonest enabled alarm and its fire date.
     func nextAlarmFire(at now: Date = Date()) -> (alarm: AlarmItem?, date: Date?) {
+        if let pauseAllUntil, pauseAllUntil > now {
+            return (nil, nil)
+        }
         var bestAlarm: AlarmItem?
         var bestDate: Date?
-        for alarm in alarms where alarm.isEnabled {
-            guard let d = alarm.nextFireDate(from: now) else { continue }
+        for alarm in alarms where isAlarmEnabled(alarm, now: now) {
+            let d: Date?
+            if let snooze = alarm.snoozeUntil, snooze <= now {
+                d = now
+            } else if let occurrence = alarm.mostRecentOccurrence(at: now),
+                      isRecentMissedOccurrence(occurrence, now: now),
+                      alarm.lastFiredKey != AlarmTimeUtil.fireKey(for: occurrence) {
+                d = now
+            } else {
+                d = alarm.nextFireDate(from: now)
+            }
+            guard let d = d else { continue }
             if let bd = bestDate {
                 if d < bd {
                     bestDate = d
@@ -123,7 +505,28 @@ final class AlarmStore: ObservableObject {
                 bestAlarm = alarm
             }
         }
+        // A confirmation deadline is also a scheduler deadline. This lets the
+        // engine mark an unconfirmed one-shot alarm as expired even when there
+        // is no future calendar occurrence to wake the timer.
+        for alarm in alarms {
+            guard alarm.wakeConfirmationState == .pending
+                    || alarm.wakeConfirmationState == .stoppedWithoutConfirmation,
+                  let deadline = alarm.wakeConfirmationDeadline,
+                  deadline > now else { continue }
+            if bestDate == nil || deadline < bestDate! {
+                bestDate = deadline
+                bestAlarm = alarm
+            }
+        }
         return (bestAlarm, bestDate)
+    }
+
+    private func isRecentMissedOccurrence(_ occurrence: Date, now: Date) -> Bool {
+        let age = now.timeIntervalSince(occurrence)
+        if age < 0 || age <= 2 { return age >= 0 }
+        let policy = AppSettings.shared.missedAlarmPolicy
+        guard policy != .wakeOnly, let window = policy.catchUpWindow else { return false }
+        return age <= window
     }
 
     // MARK: - Audio library
@@ -150,15 +553,251 @@ final class AlarmStore: ObservableObject {
     @discardableResult
     func addImportedAudio(url: URL) -> ImportedAudio? {
         let name = url.deletingPathExtension().lastPathComponent
-        guard !importedAudios.contains(where: { $0.urlString == url.path }) else {
-            return importedAudios.first(where: { $0.urlString == url.path })
+        guard isPlayableAudio(url: url) else {
+            NSLog("AlarmStore: rejected audio that AVAudioPlayer cannot decode: %@", url.path)
+            return nil
         }
-        let audio = ImportedAudio(name: name, urlString: url.path)
-        importedAudios.append(audio)
-        return audio
+        let hash = contentHash(for: url)
+        if let existing = importedAudios.first(where: {
+            sameFile($0.url, url) || (hash != nil && $0.contentHash == hash)
+        }) {
+            return existing
+        }
+        let audioID = UUID()
+        do {
+            let shouldCopy = AppSettings.shared.copyImportedAudioToLibrary
+            let storedURL: URL
+            let managedCopy: Bool
+            if shouldCopy {
+                storedURL = try storage.copyAudio(from: url, audioID: audioID)
+                managedCopy = true
+            } else {
+                storedURL = url.standardizedFileURL
+                managedCopy = false
+            }
+            let audio = ImportedAudio(id: audioID,
+                                      name: name,
+                                      urlString: storedURL.path,
+                                      isManagedCopy: managedCopy,
+                                      contentHash: hash)
+            importedAudios.append(audio)
+            persistImportedAudiosAfterUserChange()
+            return audio
+        } catch {
+            NSLog("AlarmStore: failed to copy imported audio %@: %@", url.path, error.localizedDescription)
+            return nil
+        }
     }
 
     func removeAudio(id: UUID) {
+        let removedAudio = importedAudios.first(where: { $0.id == id })
         importedAudios.removeAll { $0.id == id }
+        for index in alarms.indices {
+            let originalCount = alarms[index].tracks.count
+            alarms[index].tracks.removeAll {
+                if case .local(_, _, let audioID) = $0 { return audioID == id }
+                return false
+            }
+            if alarms[index].tracks.count != originalCount {
+                alarms[index].audioNeedsSelection = true
+            }
+        }
+        if removedAudio?.isManagedCopy == true {
+            storage.removeAudioFile(for: id)
+        }
+        persistAlarmsAfterUserChange()
+        persistImportedAudiosAfterUserChange()
+    }
+
+    /// Replaces the shared copy while keeping the stable audio ID referenced by
+    /// existing alarms.
+    @discardableResult
+    func replaceAudio(id: UUID) -> ImportedAudio? {
+        guard let index = importedAudios.firstIndex(where: { $0.id == id }) else { return nil }
+        let panel = NSOpenPanel()
+        panel.title = L("Replace Audio")
+        panel.prompt = L("Replace")
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedFileTypes = musicFileTypes
+        guard panel.runModal() == .OK, let sourceURL = panel.url,
+              isPlayableAudio(url: sourceURL) else { return nil }
+        do {
+            let managedCopy = importedAudios[index].isManagedCopy
+            let storedURL: URL
+            if managedCopy {
+                storedURL = try storage.replaceAudio(from: sourceURL, audioID: id)
+            } else {
+                storedURL = sourceURL.standardizedFileURL
+            }
+            importedAudios[index].name = sourceURL.deletingPathExtension().lastPathComponent
+            importedAudios[index].urlString = storedURL.path
+            importedAudios[index].contentHash = contentHash(for: sourceURL)
+            for alarmIndex in alarms.indices {
+                for trackIndex in alarms[alarmIndex].tracks.indices {
+                    if case .local(_, _, let audioID) = alarms[alarmIndex].tracks[trackIndex], audioID == id {
+                        alarms[alarmIndex].tracks[trackIndex] = .local(name: importedAudios[index].name,
+                                                                       path: storedURL.path,
+                                                                       audioID: audioID)
+                        alarms[alarmIndex].audioNeedsSelection = false
+                    }
+                }
+            }
+            persistAlarmsAfterUserChange()
+            persistImportedAudiosAfterUserChange()
+            return importedAudios[index]
+        } catch {
+            NSLog("AlarmStore: failed to replace audio %@: %@", sourceURL.path, error.localizedDescription)
+            return nil
+        }
+    }
+
+    private func migrateLoadedData() {
+        var migratedAlarms = alarms
+        for index in migratedAlarms.indices {
+            migratedAlarms[index].migrateIfNeeded()
+        }
+        var migratedAudios = importedAudios
+        storage.migrateLegacyAudio(alarms: &migratedAlarms, importedAudios: &migratedAudios)
+        for index in migratedAudios.indices where migratedAudios[index].contentHash == nil {
+            migratedAudios[index].contentHash = contentHash(for: migratedAudios[index].url)
+        }
+
+        if migratedAlarms != alarms {
+            alarms = migratedAlarms
+            if !alarmsNeedRepair { _ = storage.save(alarms, to: storage.alarmsURL) }
+        }
+        if migratedAudios != importedAudios {
+            importedAudios = migratedAudios
+            if !importedAudiosNeedRepair { _ = storage.save(importedAudios, to: storage.importedAudiosURL) }
+        }
+    }
+
+    private func persistAlarmsAfterUserChange() {
+        alarmsNeedRepair = false
+        _ = storage.save(alarms, to: storage.alarmsURL)
+    }
+
+    private func persistImportedAudiosAfterUserChange() {
+        importedAudiosNeedRepair = false
+        _ = storage.save(importedAudios, to: storage.importedAudiosURL)
+    }
+
+    private func persistOccurrencesAfterUserChange() {
+        occurrencesNeedRepair = false
+        _ = storage.save(occurrences, to: storage.occurrencesURL)
+    }
+
+    private func saveRuntimeState() {
+        _ = storage.save(SharedAlarmRuntimeState(pauseAllUntil: pauseAllUntil), to: storage.runtimeURL)
+    }
+
+    private func isPlayableAudio(url: URL) -> Bool {
+        guard FileManager.default.fileExists(atPath: url.path),
+              let player = try? AVAudioPlayer(contentsOf: url) else { return false }
+        return player.duration > 0
+    }
+
+    struct AudioLibraryReport {
+        let missingAudioIDs: [UUID]
+        let duplicateGroups: [[UUID]]
+        let orphanedManagedFiles: [URL]
+
+        var summary: String {
+            String(format: L("%@ missing items, %@ duplicate groups, %@ orphaned files"),
+                   "\(missingAudioIDs.count)", "\(duplicateGroups.count)", "\(orphanedManagedFiles.count)")
+        }
+    }
+
+    func audioLibraryReport() -> AudioLibraryReport {
+        let missing = importedAudios.filter { !$0.fileExists }.map(\.id)
+        var groups: [String: [UUID]] = [:]
+        for audio in importedAudios {
+            if let hash = audio.contentHash ?? contentHash(for: audio.url) {
+                groups[hash, default: []].append(audio.id)
+            }
+        }
+        let duplicates = groups.values.filter { $0.count > 1 }
+        let knownIDs = Set(importedAudios.map { $0.id.uuidString })
+        let orphaned = storage.managedAudioFiles().filter {
+            !knownIDs.contains($0.deletingPathExtension().lastPathComponent)
+        }
+        return AudioLibraryReport(missingAudioIDs: missing,
+                                  duplicateGroups: duplicates,
+                                  orphanedManagedFiles: orphaned)
+    }
+
+    @discardableResult
+    func removeOrphanedManagedAudioFiles() -> Int {
+        let report = audioLibraryReport()
+        for file in report.orphanedManagedFiles { try? FileManager.default.removeItem(at: file) }
+        return report.orphanedManagedFiles.count
+    }
+
+    /// Keeps the first library item in each content-hash group and rewrites all
+    /// alarm references before deleting duplicate managed copies.
+    @discardableResult
+    func deduplicateAudioLibrary() -> Int {
+        let report = audioLibraryReport()
+        var replacements: [UUID: ImportedAudio] = [:]
+        for group in report.duplicateGroups {
+            guard let canonicalID = group.first,
+                  let canonical = importedAudios.first(where: { $0.id == canonicalID }) else { continue }
+            for duplicateID in group.dropFirst() { replacements[duplicateID] = canonical }
+        }
+        guard !replacements.isEmpty else { return 0 }
+        for alarmIndex in alarms.indices {
+            for trackIndex in alarms[alarmIndex].tracks.indices {
+                guard case .local(let name, _, let audioID) = alarms[alarmIndex].tracks[trackIndex],
+                      let canonical = replacements[audioID] else { continue }
+                alarms[alarmIndex].tracks[trackIndex] = .local(name: name,
+                                                               path: canonical.urlString,
+                                                               audioID: canonical.id)
+            }
+        }
+        for duplicateID in replacements.keys {
+            if importedAudios.first(where: { $0.id == duplicateID })?.isManagedCopy == true {
+                storage.removeAudioFile(for: duplicateID)
+            }
+        }
+        importedAudios.removeAll { replacements[$0.id] != nil }
+        persistAlarmsAfterUserChange()
+        persistImportedAudiosAfterUserChange()
+        return replacements.count
+    }
+
+    private func contentHash(for url: URL) -> String? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        while autoreleasepool(invoking: {
+            let data = handle.readData(ofLength: 1024 * 1024)
+            guard !data.isEmpty else { return false }
+            hasher.update(data: data)
+            return true
+        }) {}
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
+    }
+
+    private func sameFile(_ lhs: URL, _ rhs: URL) -> Bool {
+        if lhs.standardizedFileURL == rhs.standardizedFileURL { return true }
+        guard let left = try? lhs.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey]),
+              let right = try? rhs.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey]) else { return false }
+        return left.fileSize == right.fileSize
+            && left.contentModificationDate == right.contentModificationDate
+    }
+
+    private static func loadLegacy<T: Decodable>(_ type: T.Type, key: String)
+        -> (value: T?, hadData: Bool) {
+        guard let data = UserDefaults.standard.data(forKey: key) else {
+            return (nil, false)
+        }
+        do {
+            return (try JSONDecoder().decode(type, from: data), true)
+        } catch {
+            NSLog("AlarmStore: failed to decode legacy key %@: %@", key, error.localizedDescription)
+            return (nil, true)
+        }
     }
 }

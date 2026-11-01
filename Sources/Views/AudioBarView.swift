@@ -1,100 +1,226 @@
 import SwiftUI
+import AppKit
 
-/// Bottom music library bar: import button + chips for each imported audio
-/// with play / pause preview and remove actions.
+/// Compact entry point for the local audio library. The full library opens as
+/// a trailing panel so the main alarm list keeps its vertical space.
 struct AudioBarView: View {
     @EnvironmentObject var store: AlarmStore
     @EnvironmentObject var audioManager: AudioManager
-    @EnvironmentObject var languageManager: LanguageManager
+    @Binding var isExpanded: Bool
+    @ObservedObject private var settings = AppSettings.shared
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            headerRow
-            musicList
-        }
-        .padding(14)
-        .background(Color(NSColor.windowBackgroundColor))
-    }
-
-    private var headerRow: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             Text("🎵")
-                .foregroundColor(Color.secondary)
-            Text(L("Music Library"))
-                .font(.headline)
+                .font(.system(size: 16))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L("Music Library"))
+                    .font(.headline)
+                Text(librarySummary)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(1)
+            }
             Spacer()
-            Button(action: { self.store.importAudio() }) {
-                HStack(spacing: 6) {
-                    Text("➕")
-                    Text(L("Import Music"))
+            if let currentName = currentPreviewName {
+                HStack(spacing: 5) {
+                    Text("🔊")
+                    Text(currentName)
+                        .font(.caption)
+                        .lineLimit(1)
+                }
+                .foregroundColor(.accentColor)
+                .frame(maxWidth: 180, alignment: .trailing)
+            }
+            Button(action: { store.importAudio() }) {
+                Image(systemName: "plus")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .buttonStyle(BorderedButtonStyle())
+            .help(L("Import Music"))
+            .accessibilityLabel(L("Import Music"))
+            Button(action: { withAnimation(.easeInOut(duration: 0.2)) { isExpanded = true } }) {
+                HStack(spacing: 5) {
+                    Image(systemName: "sidebar.right")
+                    Text(L("Music Library"))
                 }
             }
+            .buttonStyle(BorderedButtonStyle())
+            .accessibilityLabel(L("Open Music Library"))
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(ThemeSurfaceBackground(choice: settings.themeChoice))
     }
 
-    private var musicList: some View {
-        Group {
+    private var librarySummary: String {
+        if store.importedAudios.isEmpty {
+            return L("No music imported. Click “Import Music” to add .mp3 / .m4a files.")
+        }
+        return String(format: L("%d tracks"), store.importedAudios.count)
+    }
+
+    private var currentPreviewName: String? {
+        guard let currentURL = audioManager.currentURL else { return nil }
+        return store.importedAudios.first(where: { $0.url == currentURL })?.name
+    }
+}
+
+struct MusicLibraryPanel: View {
+    @EnvironmentObject var store: AlarmStore
+    @EnvironmentObject var audioManager: AudioManager
+    @Binding var isPresented: Bool
+    @ObservedObject private var settings = AppSettings.shared
+    @State private var libraryMessage = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            header
+            Divider()
             if store.importedAudios.isEmpty {
-                Text(L("No music imported. Click “Import Music” to add .mp3 / .m4a files."))
-                    .font(.caption)
-                    .foregroundColor(Color.secondary)
-                    .padding(.leading, 26)
+                emptyState
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                ScrollView {
+                    VStack(spacing: 8) {
                         ForEach(store.importedAudios) { audio in
-                            self.audioChip(audio)
+                            audioRow(audio)
                         }
                     }
-                    .padding(.vertical, 2)
                 }
             }
+            Divider()
+            libraryActions
+            if !libraryMessage.isEmpty {
+                Text(libraryMessage)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(3)
+            }
+        }
+        .padding(18)
+        .frame(width: 370, alignment: .topLeading)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
+        .background(ThemeSurfaceBackground(choice: settings.themeChoice))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.accentColor.opacity(0.18), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.22), radius: 24, x: -8, y: 8)
+        .accessibilityElement(children: .contain)
+    }
+
+    private var header: some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(L("Music Library"))
+                    .font(.title3.weight(.semibold))
+                Text(String(format: L("%d tracks"), store.importedAudios.count))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+            Button(action: { store.importAudio() }) {
+                Image(systemName: "plus")
+            }
+            .buttonStyle(BorderedButtonStyle())
+            .help(L("Import Music"))
+            .accessibilityLabel(L("Import Music"))
+            Button(action: { withAnimation(.easeInOut(duration: 0.2)) { isPresented = false } }) {
+                Image(systemName: "xmark")
+            }
+            .buttonStyle(PlainButtonStyle())
+            .foregroundColor(.secondary)
+            .help(L("Close"))
+            .accessibilityLabel(L("Close"))
         }
     }
 
-    private func audioChip(_ audio: ImportedAudio) -> some View {
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Spacer()
+            Text("🎵")
+                .font(.system(size: 36))
+            Text(L("No music imported. Click “Import Music” to add .mp3 / .m4a files."))
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            Button(L("Import Music")) { store.importAudio() }
+                .buttonStyle(BorderedButtonStyle())
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func audioRow(_ audio: ImportedAudio) -> some View {
         let isCurrent = audioManager.currentURL == audio.url
         let playing = isCurrent && audioManager.isPlaying
-        return HStack(spacing: 8) {
-            Text(isCurrent ? "🔊" : "🎵")
-                .foregroundColor(isCurrent ? Color.accentColor : Color.secondary)
-            Text(audio.name)
-                .font(.caption)
-                .lineLimit(1)
-            chipPlayButton(audio, playing: playing)
-            chipRemoveButton(audio)
+        return HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(isCurrent ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.12))
+                .frame(width: 34, height: 34)
+                .overlay(Text(isCurrent ? "🔊" : "🎵"))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(audio.name)
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(1)
+                Text(audio.fileExists ? L("Playable") : L("Missing"))
+                    .font(.caption)
+                    .foregroundColor(audio.fileExists ? .secondary : .orange)
+            }
+            Spacer(minLength: 4)
+            Button(action: {
+                guard audio.fileExists else { return }
+                audioManager.togglePreview(url: audio.url, name: audio.name)
+            }) {
+                Image(systemName: playing ? "pause.fill" : "play.fill")
+            }
+            .buttonStyle(PlainButtonStyle())
+            .disabled(!audio.fileExists)
+            .accessibilityLabel(playing ? L("Pause preview") : L("Preview Sound"))
+            Button(action: { store.replaceAudio(id: audio.id) }) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help(L("Replace Audio"))
+            .accessibilityLabel(L("Replace Audio"))
+            Button(action: { store.removeAudio(id: audio.id) }) {
+                Image(systemName: "trash")
+            }
+            .buttonStyle(PlainButtonStyle())
+            .foregroundColor(.secondary)
+            .accessibilityLabel(L("Delete audio"))
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
+        .padding(10)
         .background(
-            Capsule().fill(Color(NSColor.controlBackgroundColor))
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .fill(Color(NSColor.controlBackgroundColor).opacity(0.72))
         )
         .overlay(
-            Capsule().stroke(Color.accentColor.opacity(isCurrent ? 0.5 : 0), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 11, style: .continuous)
+                .stroke(isCurrent ? Color.accentColor.opacity(0.5) : Color.clear, lineWidth: 1)
         )
     }
 
-    private func chipPlayButton(_ audio: ImportedAudio, playing: Bool) -> some View {
-        Button(action: {
-            if audio.fileExists {
-                self.audioManager.togglePreview(url: audio.url, name: audio.name)
+    private var libraryActions: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L("Audio library health"))
+                .font(.caption.weight(.semibold))
+                .foregroundColor(.secondary)
+            HStack(spacing: 8) {
+                Button(L("Scan audio library")) {
+                    libraryMessage = store.audioLibraryReport().summary
+                }
+                Button(L("Remove orphaned files")) {
+                    let count = store.removeOrphanedManagedAudioFiles()
+                    libraryMessage = String(format: L("Removed %@ orphaned files"), "\(count)")
+                }
+                Button(L("Deduplicate audio")) {
+                    let count = store.deduplicateAudioLibrary()
+                    libraryMessage = String(format: L("Removed %@ duplicate items"), "\(count)")
+                }
             }
-        }) {
-            Text(playing ? "⏸" : "▶️")
-                .font(.system(size: 14))
+            .font(.caption)
         }
-        .buttonStyle(PlainButtonStyle())
-        .disabled(!audio.fileExists)
-    }
-
-    private func chipRemoveButton(_ audio: ImportedAudio) -> some View {
-        Button(action: {
-            self.store.removeAudio(id: audio.id)
-        }) {
-            Text("✖️")
-                .font(.system(size: 14))
-        }
-        .buttonStyle(PlainButtonStyle())
-        .foregroundColor(Color.secondary)
     }
 }

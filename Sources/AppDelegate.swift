@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Combine
 
 /// AppKit application delegate. Sets up the main window hosting the SwiftUI
 /// content, wires up the data store / audio manager / alarm engine, and builds
@@ -10,6 +11,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var audioManager: AudioManager!
     private var engine: AlarmEngine!
     private var languageManager = LanguageManager.shared
+    private let appSettings = AppSettings.shared
+    private var sharedStorageObserver: NSObjectProtocol?
+    private var statusItem: NSStatusItem?
+    private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let store = AlarmStore()
@@ -18,6 +23,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.store = store
         self.audioManager = audio
         self.engine = engine
+
+        // A second copy of the app may update the shared JSON while this copy
+        // is inactive. Reload when macOS brings this process back to the front
+        // so all app locations converge on the same alarm list.
+        sharedStorageObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak store] _ in
+            store?.reloadFromSharedStorage()
+        }
 
         // Wire sequential playlist callback: when a local track finishes,
         // advance to the next track in the playlist.
@@ -28,9 +44,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         engine.start()
         setupMenu()
         createMainWindow()
+        updateMenuBarItem()
 
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate(ignoringOtherApps: true)
+        if appSettings.hideMainWindowOnLaunch {
+            window?.orderOut(nil)
+        } else {
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     /// Re-opens the main window when the user clicks the Dock icon / re-activates
@@ -49,6 +70,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        if let observer = sharedStorageObserver {
+            NotificationCenter.default.removeObserver(observer)
+            sharedStorageObserver = nil
+        }
         engine?.stop()
         store?.save() // flush any pending alarm/audio changes to disk before exiting
     }
@@ -103,6 +128,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
                         keyEquivalent: "")
         appMenu.addItem(NSMenuItem.separator())
+        appMenu.addItem(withTitle: L("Settings…"),
+                        action: #selector(openSettings),
+                        keyEquivalent: ",")
+        appMenu.addItem(NSMenuItem.separator())
         appMenu.addItem(withTitle: L("Hide Music Alarm"),
                         action: #selector(NSApplication.hide(_:)),
                         keyEquivalent: "h")
@@ -114,4 +143,67 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         NSApp.mainMenu = mainMenu
     }
+
+    private func updateMenuBarItem() {
+        if appSettings.showMenuBarItem {
+            if statusItem == nil {
+                let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+                item.button?.title = "⏰"
+                let menu = NSMenu()
+                menu.addItem(withTitle: L("Open Music Alarm"),
+                             action: #selector(showMainWindowFromMenu),
+                             keyEquivalent: "")
+                menu.addItem(withTitle: L("Settings…"),
+                             action: #selector(openSettings),
+                             keyEquivalent: "")
+                menu.addItem(NSMenuItem.separator())
+                menu.addItem(withTitle: L("Quit Music Alarm"),
+                             action: #selector(terminateFromMenu),
+                             keyEquivalent: "q")
+                menu.items.forEach { $0.target = self }
+                item.menu = menu
+                statusItem = item
+            }
+        } else if let statusItem {
+            NSStatusBar.system.removeStatusItem(statusItem)
+            self.statusItem = nil
+        }
+    }
+
+    @objc private func showMainWindowFromMenu() {
+        showMainWindow()
+    }
+
+    @objc private func terminateFromMenu() {
+        NSApp.terminate(nil)
+    }
+
+    @objc private func openSettings() {
+        if let settingsWindow {
+            settingsWindow.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let hosting = NSHostingView(rootView: SettingsView(settings: appSettings)
+            .environmentObject(store)
+            .environmentObject(engine))
+        let settingsWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 500, height: 680),
+                                       styleMask: [.titled, .closable],
+                                       backing: .buffered,
+                                       defer: false)
+        settingsWindow.title = L("Settings")
+        settingsWindow.isReleasedWhenClosed = false
+        settingsWindow.contentView = hosting
+        settingsWindow.center()
+        settingsWindow.makeKeyAndOrderFront(nil)
+        self.settingsWindow = settingsWindow
+        NSApp.activate(ignoringOtherApps: true)
+
+        appSettings.objectWillChange.sink { [weak self] _ in
+            DispatchQueue.main.async { self?.updateMenuBarItem() }
+        }.store(in: &settingsCancellables)
+    }
+
+    private var settingsCancellables = Set<AnyCancellable>()
 }

@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-# One-click universal (arm64 + x86_64) build & package script for the Music Alarm (V2) macOS app.
-# Produces ./dist/MusicAlarm.app — a fat/universal binary on toolchains that support both
-# architectures (Xcode 12+ / Swift 5.3+). On older toolchains it falls back to whatever
-# architectures it can compile and prints a warning.
+# One-click universal (arm64 + x86_64) build & package script for Music Alarm.
+# The default build is strict: both architectures must compile. A thin ad-hoc
+# developer build is explicit; signed builds fail when signing fails.
 #
 # Usage:
-#   ./build.sh                     # build all ARCHS (default: arm64 x86_64)
-#   ARCHS="x86_64" ./build.sh      # build only x86_64
-#   ARCHS="arm64" ./build.sh       # build only arm64
+#   ./build.sh                                      # strict universal build
+#   ARCHS="x86_64" REQUIRE_UNIVERSAL=0 ./build.sh   # explicit local thin build
+#   SIGNING_IDENTITY="Developer ID Application: ..." ./build.sh
 set -euo pipefail
 
 APP_NAME="MusicAlarm"
@@ -24,21 +23,36 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 
 # Architectures to build. Override with: ARCHS="x86_64" ./build.sh
 ARCHS="${ARCHS:-arm64 x86_64}"
+REQUIRE_UNIVERSAL="${REQUIRE_UNIVERSAL:-1}"
+REQUIRE_SIGNING="${REQUIRE_SIGNING:-0}"
+SIGNING_IDENTITY="${SIGNING_IDENTITY:--}"
 # Minimum macOS version (must match LSMinimumSystemVersion in Info.plist)
 MIN_MACOS="11.0"
+VERSION_FILE="$BUILD_ROOT/VERSION"
+APP_VERSION="$(tr -d '[:space:]' < "$VERSION_FILE")"
+BUILD_NUMBER="${BUILD_NUMBER:-$(git -C "$BUILD_ROOT" rev-list --count HEAD)}"
+GIT_COMMIT="$(git -C "$BUILD_ROOT" rev-parse HEAD 2>/dev/null || echo unknown)"
+
+if [[ ! "$APP_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "ERROR: VERSION must contain semantic version X.Y.Z" >&2
+  exit 1
+fi
 
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 info() { echo -e "${GREEN}==>${NC} $1"; }
 warn() { echo -e "${YELLOW}WARN:${NC} $1"; }
 
-info "Music Alarm V2 — universal build & package script"
+info "Music Alarm $APP_VERSION — universal build & package script"
 info "Target architectures: $ARCHS"
 info "Cleaning previous build..."
 rm -rf "$APP_DIR"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 
 info "Compiling Swift sources with swiftc..."
-SWIFT_FILES=$(find "$SRC_DIR" -name '*.swift' | sort)
+SWIFT_FILES=()
+while IFS= read -r swift_file; do
+  SWIFT_FILES+=("$swift_file")
+done < <(find "$SRC_DIR" -name '*.swift' -print | sort)
 
 # Compile for a single architecture. Prefers the modern target triple
 # (arm64/x86_64-apple-macos11.0); falls back to the legacy 10.15 triple for old
@@ -51,9 +65,10 @@ compile_arch() {
         -framework SwiftUI \
         -framework AppKit \
         -framework AVFoundation \
+        -framework CryptoKit \
         -framework Combine \
         -o "$TMP_DIR/$APP_NAME-$arch" \
-        $SWIFT_FILES 2>"$TMP_DIR/$arch.err"; then
+        "${SWIFT_FILES[@]}" 2>"$TMP_DIR/$arch.err"; then
       echo "   [$arch] compiled OK (target: $t)."
       return 0
     fi
@@ -78,7 +93,11 @@ if [ "${#THIN_BINARIES[@]}" -eq 0 ]; then
 fi
 
 if [ "${#THIN_BINARIES[@]}" -eq 1 ]; then
-  warn "Only one architecture built (${THIN_BINARIES[0]##*-}); this is NOT a universal binary."
+  if [ "$REQUIRE_UNIVERSAL" = "1" ]; then
+    echo "ERROR: only one architecture compiled; universal build is required." >&2
+    exit 1
+  fi
+  warn "Only one architecture built (${THIN_BINARIES[0]##*-}); explicit thin build requested."
   cp "${THIN_BINARIES[0]}" "$MACOS_DIR/$APP_NAME"
 else
   info "Merging universal binary with lipo..."
@@ -89,6 +108,10 @@ echo "   Binary: $MACOS_DIR/$APP_NAME"
 
 info "Copying Info.plist..."
 cp "$BUILD_ROOT/Info.plist" "$CONTENTS/Info.plist"
+plutil -replace CFBundleShortVersionString -string "$APP_VERSION" "$CONTENTS/Info.plist"
+plutil -replace CFBundleVersion -string "$BUILD_NUMBER" "$CONTENTS/Info.plist"
+printf 'version=%s\nbuild=%s\ncommit=%s\n' "$APP_VERSION" "$BUILD_NUMBER" "$GIT_COMMIT" \
+  > "$RESOURCES_DIR/MusicAlarm.build-info"
 
 info "Installing localizations..."
 if [ -d "$BUILD_ROOT/Localizations" ]; then
@@ -125,11 +148,16 @@ else
   warn "iconutil not found; skipping app icon."
 fi
 
-info "Ad-hoc code signing..."
-if codesign --force --deep --sign - "$APP_DIR" 2>/dev/null; then
-  echo "   Signed OK."
+if [ "$SIGNING_IDENTITY" = "-" ]; then
+  if [ "$REQUIRE_SIGNING" = "1" ]; then
+    echo "ERROR: REQUIRE_SIGNING=1 but SIGNING_IDENTITY is not configured." >&2
+    exit 1
+  fi
+  info "Ad-hoc code signing (developer build)..."
+  codesign --force --deep --sign - "$APP_DIR"
 else
-  warn "codesign failed; app is still runnable locally."
+  info "Code signing with configured identity..."
+  codesign --force --deep --options runtime --timestamp --sign "$SIGNING_IDENTITY" "$APP_DIR"
 fi
 
 echo ""

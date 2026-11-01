@@ -13,15 +13,19 @@ final class AlarmPopupController {
 
     static func show(alarm: AlarmItem,
                      onSnooze: @escaping (AlarmItem) -> Void,
-                     onStop: @escaping (AlarmItem) -> Void) {
+                     onStop: @escaping (AlarmItem) -> Void,
+                     onConfirmWake: @escaping (AlarmItem) -> Void) {
         dismiss()
 
-        let contentView = AlarmPopupView(alarm: alarm, onSnooze: onSnooze, onStop: onStop)
+        let contentView = AlarmPopupView(alarm: alarm,
+                                         onSnooze: onSnooze,
+                                         onStop: onStop,
+                                         onConfirmWake: onConfirmWake)
         let hosting = NSHostingView(rootView: contentView)
-        hosting.frame = NSRect(x: 0, y: 0, width: 524, height: 430)
+        hosting.frame = NSRect(x: 0, y: 0, width: 524, height: 480)
 
         let panel = AlarmPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 524, height: 430),
+            contentRect: NSRect(x: 0, y: 0, width: 524, height: 480),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false

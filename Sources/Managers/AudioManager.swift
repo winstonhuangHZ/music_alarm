@@ -8,6 +8,7 @@ final class AudioManager: NSObject, ObservableObject {
     @Published private(set) var isPlaying = false
     @Published private(set) var currentURL: URL?
     @Published private(set) var nowPlayingName: String?
+    private(set) var lastPlaybackError: String?
 
     /// Called when a local track finishes during alarm ringing (for
     /// sequential playlist support — advances to the next track).
@@ -33,7 +34,7 @@ final class AudioManager: NSObject, ObservableObject {
         guard let p = makePlayer(url: url) else { return }
         p.volume = 1.0
         p.numberOfLoops = 0
-        p.play()
+        guard p.play() else { return }
         player = p
         currentURL = url
         nowPlayingName = name
@@ -42,30 +43,50 @@ final class AudioManager: NSObject, ObservableObject {
 
     // MARK: - Alarm ringing
 
+    @discardableResult
     func ring(url: URL, name: String?, numberOfLoops: Int = -1,
-              fadeDuration: TimeInterval = 20, targetVolume: Float = 0.85) {
+              fadeDuration: TimeInterval = 20, targetVolume: Float = 0.85) -> Bool {
         stop()
+        lastPlaybackError = nil
         guard let p = makePlayer(url: url) else {
-            ringFallback()
-            return
+            return false
         }
         isRinging = true
-        p.volume = 0
+        let safeTargetVolume = min(max(targetVolume, 0), 1)
+        p.volume = fadeDuration > 0 ? 0 : safeTargetVolume
         p.numberOfLoops = numberOfLoops
-        p.play()
+        guard p.play() else {
+            stop()
+            return false
+        }
         player = p
         currentURL = url
         nowPlayingName = name
         isPlaying = true
-        startFade(to: targetVolume, duration: fadeDuration)
+        if fadeDuration > 0 {
+            startFade(to: safeTargetVolume, duration: fadeDuration)
+        }
+        return true
     }
 
-    func ringFallback() {
-        if let sound = NSSound(named: "Glass") {
-            sound.loops = true
-            sound.play()
-            fallbackSound = sound
+    @discardableResult
+    func ringFallback(name: String = "Glass") -> Bool {
+        stop()
+        lastPlaybackError = nil
+        guard let sound = NSSound(named: name) else {
+            lastPlaybackError = String(format: L("Fallback sound is unavailable: %@"), name)
+            return false
         }
+        sound.loops = true
+        guard sound.play() else {
+            lastPlaybackError = String(format: L("Fallback sound could not start: %@"), name)
+            return false
+        }
+        isRinging = true
+        isPlaying = true
+        nowPlayingName = L("System fallback sound")
+        fallbackSound = sound
+        return true
     }
 
     private func makePlayer(url: URL) -> AVAudioPlayer? {
@@ -75,6 +96,7 @@ final class AudioManager: NSObject, ObservableObject {
             p.prepareToPlay()
             return p
         } catch {
+            lastPlaybackError = error.localizedDescription
             NSLog("AudioManager: failed to load %@: %@", url.path, error.localizedDescription)
             return nil
         }
@@ -114,9 +136,11 @@ final class AudioManager: NSObject, ObservableObject {
 extension AudioManager: AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         DispatchQueue.main.async {
+            guard self.player === player else { return }
             if self.isRinging {
                 self.onTrackFinished?()
             } else {
+                self.player = nil
                 self.isPlaying = false
                 self.currentURL = nil
                 self.nowPlayingName = nil

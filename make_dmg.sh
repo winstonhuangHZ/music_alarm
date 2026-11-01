@@ -45,6 +45,17 @@ info "Music Alarm — DMG packaging"
 if [ ! -d "$APP_DIR" ]; then
   fail "App bundle not found at $APP_DIR. Run ./build.sh first."
 fi
+if [ ! -f "$APP_DIR/Contents/Resources/MusicAlarm.build-info" ]; then
+  fail "Build metadata missing; rebuild with ./build.sh before packaging."
+fi
+APP_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP_DIR/Contents/Info.plist")"
+BUILD_VERSION="$(sed -n 's/^version=//p' "$APP_DIR/Contents/Resources/MusicAlarm.build-info")"
+[ "$APP_VERSION" = "$BUILD_VERSION" ] || fail "App version and build metadata do not match."
+if git -C "$BUILD_ROOT" rev-parse HEAD >/dev/null 2>&1; then
+  BUILD_COMMIT="$(sed -n 's/^commit=//p' "$APP_DIR/Contents/Resources/MusicAlarm.build-info")"
+  CURRENT_COMMIT="$(git -C "$BUILD_ROOT" rev-parse HEAD)"
+  [ "$BUILD_COMMIT" = "$CURRENT_COMMIT" ] || fail "App was not built from the current commit."
+fi
 if ! command -v hdiutil >/dev/null 2>&1; then
   fail "hdiutil not found (it ships with macOS)."
 fi

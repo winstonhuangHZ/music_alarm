@@ -8,25 +8,44 @@ import AppKit
 struct ContentView: View {
     @EnvironmentObject var store: AlarmStore
     @EnvironmentObject var audioManager: AudioManager
+    @EnvironmentObject var engine: AlarmEngine
     @EnvironmentObject var languageManager: LanguageManager
+    @ObservedObject private var settings = AppSettings.shared
 
     @State private var showAddAlarm = false
     @State private var editingAlarm: AlarmItem?
+    @State private var showMusicLibrary = false
     @State private var now = Date()
     @State private var clockTimer: Timer?
 
     var body: some View {
-        VStack(spacing: 0) {
-            headerView
-            Divider()
-            alarmListView
-            Divider()
-            AudioBarView()
-            Divider()
-            footerBar
+        ZStack(alignment: .trailing) {
+            ThemeBackdrop(choice: settings.themeChoice, visualState: visualState)
+            VStack(spacing: 0) {
+                headerView
+                Divider()
+                alarmListView
+                Divider()
+                AudioBarView(isExpanded: $showMusicLibrary)
+                Divider()
+                footerBar
+            }
+            if showMusicLibrary {
+                Color.black.opacity(0.08)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) { showMusicLibrary = false }
+                    }
+                MusicLibraryPanel(isPresented: $showMusicLibrary)
+                    .padding(14)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
         }
         .frame(minWidth: 760, minHeight: 640)
-        .background(Color(NSColor.windowBackgroundColor))
+        .accentColor(AppThemePalette.palette(for: settings.themeChoice).accent)
+        .preferredColorScheme(AppThemePalette.palette(for: settings.themeChoice).colorScheme)
+        .animation(.easeInOut(duration: 0.2), value: showMusicLibrary)
         .sheet(isPresented: $showAddAlarm) {
             AddAlarmView(alarm: self.editingAlarm)
         }
@@ -59,7 +78,7 @@ struct ContentView: View {
         .padding(.top, 34) // clear the traffic-light buttons
         .padding(.bottom, 18)
         .frame(maxWidth: .infinity)
-        .background(VisualEffectView())
+        .background(ThemeSurfaceBackground(choice: settings.themeChoice))
     }
 
     private var countdownView: some View {
@@ -173,6 +192,26 @@ struct ContentView: View {
         HStack {
             languagePicker
             Spacer()
+            if store.isPausedForAll {
+                Button(L("Resume all alarms")) { store.resumeAll() }
+                    .accessibilityLabel(L("Resume all alarms"))
+            } else {
+                Menu {
+                    Button(L("Pause today")) { store.pauseToday() }
+                    Button(L("Pause for 1 hour")) { store.pauseFor(hours: 1) }
+                } label: {
+                    Text(L("Pause alarms"))
+                }
+                .accessibilityLabel(L("Pause alarms"))
+            }
+            Button(action: { self.engine.testAlarm() }) {
+                HStack(spacing: 6) {
+                    Text("🔊")
+                    Text(L("Test Alarm"))
+                }
+            }
+            .buttonStyle(BorderedButtonStyle())
+            .accessibilityLabel(L("Test Alarm"))
             Button(action: { self.showNewAlarm() }) {
                 HStack(spacing: 8) {
                     Text("➕")
@@ -184,9 +223,26 @@ struct ContentView: View {
                 .padding(.vertical, 4)
             }
             .buttonStyle(BorderedButtonStyle())
+            .accessibilityLabel(L("Add Alarm"))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+    }
+
+    private var visualState: ThemeVisualState {
+        if store.isPausedForAll { return .paused }
+        if engine.isRinging {
+            if engine.ringingAlarm?.wakeConfirmationState == .pending
+                || engine.ringingAlarm?.wakeConfirmationState == .stoppedWithoutConfirmation {
+                return .confirming
+            }
+            return .ringing
+        }
+        if let next = store.nextAlarmFire(at: now).date,
+           next.timeIntervalSince(now) <= 30 * 60 {
+            return .upcoming
+        }
+        return .idle
     }
 
     /// In-app language switcher picker (bottom-left of the footer).

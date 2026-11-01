@@ -1,13 +1,19 @@
 import SwiftUI
+import AppKit
 
 /// The high-level popup shown while an alarm is ringing, with Snooze / Stop.
 struct AlarmPopupView: View {
     let alarm: AlarmItem
     let onSnooze: (AlarmItem) -> Void
     let onStop: (AlarmItem) -> Void
+    let onConfirmWake: (AlarmItem) -> Void
+    @ObservedObject private var settings = AppSettings.shared
 
     @State private var appeared = false
     @State private var pulse = false
+    @State private var confirmationInput = ""
+    @State private var slideProgress = 0.0
+    @State private var gestureCompleted = false
 
     var body: some View {
         popupCard
@@ -62,7 +68,7 @@ struct AlarmPopupView: View {
     }
 
     /// The playlist section: a source summary and the ordered list of tracks
-    /// (local + Spotify, freely mixable) that the alarm plays sequentially.
+    /// local that the alarm plays sequentially.
     /// Tracks are numbered with their icon and display name; the first track
     /// carries a "now playing" marker because `AlarmEngine` starts there.
     private var trackSection: some View {
@@ -121,11 +127,16 @@ struct AlarmPopupView: View {
     }
 
     private var actionButtons: some View {
-        HStack(spacing: 18) {
+        VStack(spacing: 10) {
+            if alarm.requiresWakeConfirmation && settings.wakeConfirmationEnabled {
+                confirmationControl
+            }
+
+            HStack(spacing: 18) {
             Button(action: { self.onSnooze(self.alarm) }) {
                 HStack(spacing: 8) {
                     Text("💤")
-                    Text(L("Snooze 5 min"))
+                    Text(String(format: L("Snooze %d min"), alarm.snoozeMinutes))
                 }
                 .font(.headline)
                 .foregroundColor(.white)
@@ -135,6 +146,7 @@ struct AlarmPopupView: View {
                 .cornerRadius(9)
             }
             .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel(String(format: L("Snooze %d min"), alarm.snoozeMinutes))
 
             Button(action: { self.onStop(self.alarm) }) {
                 HStack(spacing: 8) {
@@ -149,8 +161,95 @@ struct AlarmPopupView: View {
                 .cornerRadius(9)
             }
             .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel(L("Stop"))
+            }
         }
         .opacity(appeared ? 1 : 0)
         .scaleEffect(appeared ? 1 : 0.9)
+    }
+
+    @ViewBuilder
+    private var confirmationControl: some View {
+        switch settings.wakeConfirmationMode {
+        case .button:
+            confirmationButton
+        case .shortWord:
+            VStack(spacing: 6) {
+                TextField(L("Type AWAKE to confirm"), text: $confirmationInput)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .accessibilityLabel(L("Confirmation word"))
+                confirmationButton
+                    .disabled(confirmationInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != "awake")
+            }
+        case .hold:
+            Button(action: {}) {
+                HStack(spacing: 8) {
+                    Text("✅")
+                    Text(L("Hold for 3 seconds"))
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .background(Color.green)
+                .cornerRadius(9)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel(L("Hold for 3 seconds"))
+            .onLongPressGesture(minimumDuration: 3) {
+                guard !gestureCompleted else { return }
+                gestureCompleted = true
+                onConfirmWake(alarm)
+            }
+        case .slide:
+            VStack(spacing: 5) {
+                Text(L("Slide to confirm"))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Slider(value: $slideProgress, in: 0...1, onEditingChanged: { editing in
+                    if !editing && slideProgress >= 0.99 && !gestureCompleted {
+                        gestureCompleted = true
+                        onConfirmWake(alarm)
+                    }
+                })
+                .accessibilityLabel(L("Slide to confirm"))
+            }
+        case .mainWindow:
+            Button(action: {
+                AlarmPopupController.dismiss()
+                NSApp.windows.first(where: { $0.title == "Music Alarm" })?.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+            }) {
+                HStack(spacing: 8) {
+                    Text("🪟")
+                    Text(L("Confirm from the main window"))
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .background(Color.green)
+                .cornerRadius(9)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel(L("Confirm from the main window"))
+        }
+    }
+
+    private var confirmationButton: some View {
+        Button(action: { self.onConfirmWake(self.alarm) }) {
+            HStack(spacing: 8) {
+                Text("✅")
+                Text(L("I am really awake"))
+            }
+            .font(.headline)
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 9)
+            .background(Color.green)
+            .cornerRadius(9)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel(L("I am really awake"))
     }
 }

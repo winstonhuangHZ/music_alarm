@@ -27,15 +27,15 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>2.1</string>
+	<string>2.7.0</string>
 	<key>CFBundleVersion</key>
-	<string>12</string>
+	<string>18</string>
 	<key>CFBundleIconFile</key>
+	<string>AppIcon.icns</string>
+	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>11.0</string>
-	<key>NSAppleEventsUsageDescription</key>
-	<string>Music Alarm uses AppleScript to control Spotify so it can play your alarm playlist and pause it when you stop the alarm.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSPrincipalClass</key>
