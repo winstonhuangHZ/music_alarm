@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.24.0 - unreleased
+
+### Wake confirmation feedback
+
+- Added live hold progress, elapsed time, cancellation on excessive pointer movement, reset after release, completion state, and cleanup when the alarm popup closes.
+- Added a dynamic accessibility value for the three-second confirmation control.
+
 ## 2.23.0 - unreleased
 
 ### Music playback and staged wake-up

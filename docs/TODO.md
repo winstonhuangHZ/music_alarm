@@ -10,6 +10,10 @@ are removed after their version is committed and pushed.
 
 后续功能按“先加入 TODO，再实现并在完成版本中移入 Completed”的流程维护。
 
+## Completed in 2.24.0
+
+- Upgraded the three-second confirmation with visible progress, elapsed time, cancellation and reset feedback, completion state, popup cleanup, and accessibility value feedback.
+
 ## Completed in 2.23.0
 
 - Upgraded local playback with sequential, shuffle, repeat-one, progress feedback, duration feedback, damaged-track skipping, and additional audio format filters.

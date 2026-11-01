@@ -25,6 +25,10 @@ struct AlarmPopupView: View {
                     self.appeared = true
                 }
             }
+        .onDisappear {
+            holdTimer?.invalidate()
+            holdTimer = nil
+        }
     }
 
     private var popupCard: some View {
@@ -275,6 +279,11 @@ struct AlarmPopupView: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(L("Hold for 3 seconds"))
+        .accessibilityValue(
+            Text(gestureCompleted
+                 ? L("Wake-up confirmed")
+                 : String(format: "%.0f%%", holdProgress * 100))
+        )
         .accessibilityAction {
             stopHoldTracking(completed: true)
         }
