@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.20.0 - unreleased
+
+### Application icon redesign
+
+- Replaced the placeholder red clock icon with a code generated macOS icon that combines an alarm clock, musical note, and Dawn Flow orange, coral, violet, and plum palette.
+- Kept the icon source deterministic in `scripts/generate_icon.swift` so all generated `.icns` sizes stay consistent.
+- Tuned the silhouette and contrast for 16px, 32px, 128px, and 512px representations.
+
 ## 2.19.1 - unreleased
 
 ### Localization polish

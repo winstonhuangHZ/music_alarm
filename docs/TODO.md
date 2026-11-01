@@ -8,6 +8,11 @@ are removed after their version is committed and pushed.
 暂无 2.18.0 之前已确定且未完成的项目。后续功能候选会在确认范围后加入这里，完成后从 Remaining
 移动到对应版本的 Completed 小节。
 
+## Completed in 2.20.0
+
+- Redesigned the macOS application icon around the alarm clock, music note, and Dawn Flow brand palette.
+- Verified generated icon output at 16px, 32px, 128px, and 512px scale targets.
+
 ## Completed in 2.19.1
 
 - Localized the new library maintenance controls and the most visible diagnostic/history labels in all seven language bundles.
