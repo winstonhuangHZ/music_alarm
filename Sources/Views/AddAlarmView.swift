@@ -25,6 +25,7 @@ struct AddAlarmView: View {
     @State private var targetVolumePercent = 85
     @State private var maximumPlaybackMinutes = 30
     @State private var loopsPlaylist = true
+    @State private var snoozeMinutes = 5
 
     init(alarm: AlarmItem? = nil) {
         self.editingAlarm = alarm
@@ -47,6 +48,7 @@ struct AddAlarmView: View {
             _targetVolumePercent = State(initialValue: alarm.targetVolumePercent)
             _maximumPlaybackMinutes = State(initialValue: alarm.maximumPlaybackMinutes)
             _loopsPlaylist = State(initialValue: alarm.loopsPlaylist)
+            _snoozeMinutes = State(initialValue: alarm.snoozeMinutes)
         } else {
             comps.hour = 7
             comps.minute = 0
@@ -183,6 +185,13 @@ struct AddAlarmView: View {
                 Text(L("30 minutes")).tag(30)
                 Text(L("60 minutes")).tag(60)
                 Text(L("120 minutes")).tag(120)
+            }
+            Picker(L("Snooze duration"), selection: $snoozeMinutes) {
+                Text(L("1 minute")).tag(1)
+                Text(L("5 minutes")).tag(5)
+                Text(L("10 minutes")).tag(10)
+                Text(L("15 minutes")).tag(15)
+                Text(L("30 minutes")).tag(30)
             }
             Toggle(L("Loop the playlist"), isOn: $loopsPlaylist)
         }
@@ -425,6 +434,7 @@ struct AddAlarmView: View {
         alarm.targetVolumePercent = targetVolumePercent
         alarm.maximumPlaybackMinutes = maximumPlaybackMinutes
         alarm.loopsPlaylist = loopsPlaylist
+        alarm.snoozeMinutes = snoozeMinutes
 
         if editingAlarm != nil {
             store.updateAlarm(alarm)

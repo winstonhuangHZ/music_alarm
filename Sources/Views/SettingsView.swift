@@ -1,7 +1,12 @@
 import SwiftUI
+import AppKit
 
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
+    @EnvironmentObject var store: AlarmStore
+    @State private var backupMessage = ""
+    @State private var pendingImportURL: URL?
+    @State private var showImportConfirmation = false
 
     var body: some View {
         Form {
@@ -45,8 +50,56 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
+
+            Section(header: Text(L("Backup and restore"))) {
+                HStack {
+                    Button(L("Export backup")) {
+                        do {
+                            let folder = try BackupManager.exportInteractively(store: store)
+                            backupMessage = String(format: L("Backup exported to %@"), folder.lastPathComponent)
+                        } catch {
+                            backupMessage = error.localizedDescription
+                        }
+                    }
+                    Button(L("Import backup")) {
+                        let panel = NSOpenPanel()
+                        panel.title = L("Choose a Music Alarm backup folder")
+                        panel.prompt = L("Choose Backup")
+                        panel.canChooseFiles = false
+                        panel.canChooseDirectories = true
+                        panel.allowsMultipleSelection = false
+                        if panel.runModal() == .OK, let url = panel.url {
+                            pendingImportURL = url
+                            showImportConfirmation = true
+                        }
+                    }
+                }
+                if !backupMessage.isEmpty {
+                    Text(backupMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+                Text(L("A restore replaces the current shared alarms and audio library after validation."))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
         }
         .padding(20)
         .frame(width: 430, height: 390)
+        .alert(isPresented: $showImportConfirmation) {
+            Alert(title: Text(L("Restore backup?")),
+                  message: Text(L("The current shared alarms and audio library will be replaced.")),
+                  primaryButton: .destructive(Text(L("Restore"))) {
+                      guard let pendingImportURL else { return }
+                      do {
+                          try BackupManager.importBackup(from: pendingImportURL, into: store)
+                          backupMessage = L("Backup restored")
+                      } catch {
+                          backupMessage = error.localizedDescription
+                      }
+                  },
+                  secondaryButton: .cancel())
+        }
     }
 }

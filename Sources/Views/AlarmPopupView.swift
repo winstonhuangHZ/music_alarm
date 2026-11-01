@@ -136,7 +136,7 @@ struct AlarmPopupView: View {
             Button(action: { self.onSnooze(self.alarm) }) {
                 HStack(spacing: 8) {
                     Text("💤")
-                    Text(L("Snooze 5 min"))
+                    Text(String(format: L("Snooze %d min"), alarm.snoozeMinutes))
                 }
                 .font(.headline)
                 .foregroundColor(.white)

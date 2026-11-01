@@ -105,6 +105,10 @@ struct AlarmRowView: View {
                 Text(L("Edit Alarm"))
             }
 
+            Button(action: { self.store.skipNext(id: self.alarm.id) }) {
+                Text(L("Skip next occurrence"))
+            }
+
             Divider()
 
             Button(action: { self.onDelete(self.alarm) }) {

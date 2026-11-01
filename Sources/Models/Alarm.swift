@@ -36,6 +36,8 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     var wakeStoppedAt: Date?
     var wakeConfirmedAt: Date?
     var wakeConfirmationDeadline: Date?
+    var skipNextOccurrenceKey: String = ""
+    var snoozeMinutes: Int = 5
 
     var fadeDurationSeconds: Int = 20
     var targetVolumePercent: Int = 85
@@ -68,6 +70,7 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         case id, hour, minute, repeatType, isEnabled, label, scheduledDate, weekdays
         case requiresWakeConfirmation, wakeConfirmationState
         case wakeStartedAt, wakeStoppedAt, wakeConfirmedAt, wakeConfirmationDeadline
+        case skipNextOccurrenceKey, snoozeMinutes
         case fadeDurationSeconds, targetVolumePercent, maximumPlaybackMinutes, loopsPlaylist
         case tracks, audioNeedsSelection
         case audioName, audioPath, soundSource, spotifyPlaylistURL
@@ -94,6 +97,8 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         wakeStoppedAt = try c.decodeIfPresent(Date.self, forKey: .wakeStoppedAt)
         wakeConfirmedAt = try c.decodeIfPresent(Date.self, forKey: .wakeConfirmedAt)
         wakeConfirmationDeadline = try c.decodeIfPresent(Date.self, forKey: .wakeConfirmationDeadline)
+        skipNextOccurrenceKey = try c.decodeIfPresent(String.self, forKey: .skipNextOccurrenceKey) ?? ""
+        snoozeMinutes = try c.decodeIfPresent(Int.self, forKey: .snoozeMinutes) ?? 5
         fadeDurationSeconds = try c.decodeIfPresent(Int.self, forKey: .fadeDurationSeconds) ?? 20
         targetVolumePercent = try c.decodeIfPresent(Int.self, forKey: .targetVolumePercent) ?? 85
         maximumPlaybackMinutes = try c.decodeIfPresent(Int.self, forKey: .maximumPlaybackMinutes) ?? 30
@@ -162,6 +167,15 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         if let snooze = snoozeUntil {
             return snooze > now ? snooze : now
         }
+        let candidate = nextScheduledDate(from: now)
+        if let candidate,
+           skipNextOccurrenceKey == AlarmTimeUtil.fireKey(for: candidate) {
+            return nextScheduledDate(from: candidate.addingTimeInterval(60))
+        }
+        return candidate
+    }
+
+    private func nextScheduledDate(from now: Date) -> Date? {
         let cal = Calendar.current
         guard let today = scheduledDate(on: now, calendar: cal) else { return nil }
         switch repeatType {
@@ -190,6 +204,15 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     /// The engine uses this to recover from timer gaps and system wake-up.
     func mostRecentOccurrence(at now: Date = Date()) -> Date? {
         if let snooze = snoozeUntil, snooze <= now { return snooze }
+        let candidate = mostRecentScheduledOccurrence(at: now)
+        if let candidate,
+           skipNextOccurrenceKey == AlarmTimeUtil.fireKey(for: candidate) {
+            return mostRecentScheduledOccurrence(at: candidate.addingTimeInterval(-60))
+        }
+        return candidate
+    }
+
+    private func mostRecentScheduledOccurrence(at now: Date) -> Date? {
         let cal = Calendar.current
         if repeatType == .once, let scheduledDate {
             return scheduledDate <= now ? scheduledDate : nil

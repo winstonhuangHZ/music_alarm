@@ -5,11 +5,11 @@ are removed after their version is committed and pushed.
 
 ## Remaining
 
-- [ ] Add skip-next and configurable snooze.
+- [ ] Add detailed fallback choice and playback diagnostics.
 - [ ] Add fallback choice and detailed playback diagnostics.
 - [ ] Add occurrence history and explicit system time/timezone/DST handling.
 - [ ] Add cross-process storage locking or migrate shared data to SQLite transactions.
-- [ ] Add backup/export/import with audio files and restore preview.
+- [ ] Add restore preview and conflict handling for backups.
 - [ ] Add orphaned-audio cleanup and content-hash duplicate detection.
 - [ ] Add reliability diagnostics, accessibility coverage, and UI automation tests.
 - [ ] Update release documentation after signing and notarization are configured.
@@ -29,6 +29,12 @@ are removed after their version is committed and pushed.
 - Optional copying of imported audio into the shared Music Alarm library.
 - Actual missing and undecodable audio states in the alarm editor.
 - `audioNeedsSelection` is recalculated from playable tracks when saving.
+
+## Completed in 2.11.0
+
+- Added skip-next occurrence for repeating alarms and configurable snooze duration.
+- Added backup export and validated restore for alarms, audio metadata, and audio files.
+- Backups use relative audio paths and do not delete the current data until validation succeeds.
 
 ## Completed in 2.10.0
 

@@ -42,6 +42,7 @@ final class AlarmStore: ObservableObject {
     }
 
     private let storage: SharedAlarmStorage
+    var sharedStorage: SharedAlarmStorage { storage }
     private let legacyAlarmsKey = "MusicAlarm.alarms.v1"
     private let legacyAudiosKey = "MusicAlarm.importedAudios.v1"
     private var alarmsNeedRepair = false
@@ -140,6 +141,15 @@ final class AlarmStore: ObservableObject {
         persistAlarmsAfterUserChange()
     }
 
+    func replaceDataFromBackup(alarms: [AlarmItem], importedAudios: [ImportedAudio]) {
+        alarmsNeedRepair = false
+        importedAudiosNeedRepair = false
+        self.alarms = alarms
+        self.importedAudios = importedAudios
+        persistAlarmsAfterUserChange()
+        persistImportedAudiosAfterUserChange()
+    }
+
     /// Replaces an existing alarm in-place with an edited copy.
     func updateAlarm(_ alarm: AlarmItem) {
         guard let idx = alarms.firstIndex(where: { $0.id == alarm.id }) else { return }
@@ -153,6 +163,7 @@ final class AlarmStore: ObservableObject {
         if scheduleChanged {
             updated.snoozeUntil = nil
             updated.lastFiredKey = ""
+            updated.skipNextOccurrenceKey = ""
             updated.wakeConfirmationState = .none
             updated.wakeStartedAt = nil
             updated.wakeStoppedAt = nil
@@ -161,6 +172,7 @@ final class AlarmStore: ObservableObject {
         } else {
             updated.snoozeUntil = old.snoozeUntil
             updated.lastFiredKey = old.lastFiredKey
+            updated.skipNextOccurrenceKey = old.skipNextOccurrenceKey
             if old.requiresWakeConfirmation != alarm.requiresWakeConfirmation {
                 updated.wakeConfirmationState = .none
                 updated.wakeStartedAt = nil
@@ -197,6 +209,9 @@ final class AlarmStore: ObservableObject {
         guard let index = alarms.firstIndex(where: { $0.id == id }) else { return }
         if !isSnooze {
             alarms[index].lastFiredKey = AlarmTimeUtil.fireKey(for: occurrence)
+            if alarms[index].skipNextOccurrenceKey == AlarmTimeUtil.fireKey(for: occurrence) {
+                alarms[index].skipNextOccurrenceKey = ""
+            }
         }
         alarms[index].snoozeUntil = nil
         let requiresConfirmation = alarms[index].requiresWakeConfirmation
@@ -218,12 +233,27 @@ final class AlarmStore: ObservableObject {
         persistAlarmsAfterUserChange()
     }
 
-    func snooze(_ alarm: AlarmItem, minutes: Int = 5) {
+    func snooze(_ alarm: AlarmItem, minutes: Int? = nil) {
         guard let idx = alarms.firstIndex(where: { $0.id == alarm.id }) else { return }
-        alarms[idx].snoozeUntil = Date().addingTimeInterval(TimeInterval(minutes * 60))
+        let actualMinutes = max(1, minutes ?? alarms[idx].snoozeMinutes)
+        alarms[idx].snoozeUntil = Date().addingTimeInterval(TimeInterval(actualMinutes * 60))
         // Keep the original occurrence key. Snooze is a continuation of that
         // occurrence and must not make the base alarm fire a second time.
         alarms[idx].isEnabled = true // re-armed so the snoozed alarm can fire
+        persistAlarmsAfterUserChange()
+    }
+
+    func skipNext(id: UUID) {
+        guard let idx = alarms.firstIndex(where: { $0.id == id }) else { return }
+        if alarms[idx].repeatType == .once {
+            alarms[idx].isEnabled = false
+            alarms[idx].snoozeUntil = nil
+        } else {
+            alarms[idx].snoozeUntil = nil
+            if let next = alarms[idx].nextFireDate(from: Date()) {
+                alarms[idx].skipNextOccurrenceKey = AlarmTimeUtil.fireKey(for: next)
+            }
+        }
         persistAlarmsAfterUserChange()
     }
 

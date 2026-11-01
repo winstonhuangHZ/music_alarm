@@ -217,7 +217,7 @@ final class AlarmEngine: ObservableObject {
     func snoozeRinging(minutes: Int = 5) {
         guard let alarm = ringingAlarm else { return }
         if currentCandidate?.isTest != true {
-            store.snooze(alarm, minutes: minutes)
+            store.snooze(alarm, minutes: alarm.snoozeMinutes)
         }
         audioManager.stop()
         finishCurrent()

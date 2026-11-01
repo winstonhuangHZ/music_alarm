@@ -89,6 +89,27 @@ struct SharedAlarmStorageSmoke {
                                                       from: Data(legacyAudioJSON.utf8))
         precondition(legacyAudios[0].isManagedCopy)
 
+        let backupParent = FileManager.default.temporaryDirectory
+            .appendingPathComponent("music-alarm-backup-parent-\(UUID().uuidString)", isDirectory: true)
+        let backupTargetRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("music-alarm-backup-target-\(UUID().uuidString)", isDirectory: true)
+        defer {
+            try? FileManager.default.removeItem(at: backupParent)
+            try? FileManager.default.removeItem(at: backupTargetRoot)
+        }
+        let backupSourceStore = AlarmStore(storage: SharedAlarmStorage(rootURL: backupTargetRoot))
+        var backupAlarm = AlarmItem()
+        backupAlarm.label = "Backup test"
+        backupAlarm.repeatType = .daily
+        backupSourceStore.addAlarm(backupAlarm)
+        let backupFolder = try BackupManager.export(store: backupSourceStore, to: backupParent)
+        let restoredRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("music-alarm-restored-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: restoredRoot) }
+        let restoredStore = AlarmStore(storage: SharedAlarmStorage(rootURL: restoredRoot))
+        try BackupManager.importBackup(from: backupFolder, into: restoredStore)
+        precondition(restoredStore.alarms.first?.label == "Backup test")
+
         print("shared storage smoke test passed")
     }
 }

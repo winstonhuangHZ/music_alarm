@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.11.0 - unreleased
+
+### Backup and alarm controls
+
+- Added skip-next occurrence for repeating alarms.
+- Added configurable per-alarm snooze duration.
+- Added backup export and validated restore for alarms, audio metadata, and audio files.
+- Backups use relative audio paths and preserve missing audio as a repairable state.
+
 ## 2.10.0 - unreleased
 
 ### Playback and wake confirmation
