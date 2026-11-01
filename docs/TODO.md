@@ -8,6 +8,8 @@ are removed after their version is committed and pushed.
 暂无 2.18.0 之前已确定且未完成的项目。后续功能候选会在确认范围后加入这里，完成后从 Remaining
 移动到对应版本的 Completed 小节。
 
+- 增加“闹钟可靠性检查”页面：在睡前检查闹钟状态、音频可播放性、输出设备、系统音量、fallback、调度时间和后台运行条件，并提供可读的检查结果。
+
 ## Completed in 2.21.1
 
 - Fixed the three-second wake confirmation gesture on macOS.
