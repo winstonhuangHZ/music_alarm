@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 /// Stable, app-instance-independent storage for alarms and imported audio.
 /// Every Music Alarm build uses this same directory:
@@ -76,20 +77,22 @@ final class SharedAlarmStorage {
     func save<T: Encodable>(_ value: T, to url: URL) -> Bool {
         do {
             try prepareDirectories()
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(value)
+            return try withStoreLock {
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                let data = try encoder.encode(value)
 
-            // Keep the last known-good copy. Data.write(options: .atomic) protects
-            // readers from partial files, while this backup protects against a
-            // later interrupted write or manual corruption.
-            let backupURL = url.appendingPathExtension("bak")
-            if fileManager.fileExists(atPath: url.path) {
-                try? fileManager.removeItem(at: backupURL)
-                try? fileManager.copyItem(at: url, to: backupURL)
+                // Keep the last known-good copy. Data.write(options: .atomic) protects
+                // readers from partial files, while this backup protects against a
+                // later interrupted write or manual corruption.
+                let backupURL = url.appendingPathExtension("bak")
+                if fileManager.fileExists(atPath: url.path) {
+                    try? fileManager.removeItem(at: backupURL)
+                    try? fileManager.copyItem(at: url, to: backupURL)
+                }
+                try data.write(to: url, options: .atomic)
+                return true
             }
-            try data.write(to: url, options: .atomic)
-            return true
         } catch {
             NSLog("SharedAlarmStorage: failed to save %@: %@", url.path, error.localizedDescription)
             return false
@@ -186,5 +189,19 @@ final class SharedAlarmStorage {
             NSLog("SharedAlarmStorage: failed to decode %@: %@", url.path, error.localizedDescription)
             return nil
         }
+    }
+
+    private func withStoreLock<T>(_ body: () throws -> T) throws -> T {
+        let lockURL = rootURL.appendingPathComponent("store.lock")
+        let descriptor = open(lockURL.path, O_RDWR | O_CREAT, mode_t(0o600))
+        guard descriptor >= 0 else { throw CocoaError(.fileLocking, userInfo: [NSURLErrorKey: lockURL.path]) }
+        defer {
+            flock(descriptor, LOCK_UN)
+            close(descriptor)
+        }
+        if flock(descriptor, LOCK_EX) != 0 {
+            throw CocoaError(.fileLocking, userInfo: [NSURLErrorKey: lockURL.path])
+        }
+        return try body()
     }
 }

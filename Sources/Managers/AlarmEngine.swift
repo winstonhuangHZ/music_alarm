@@ -8,7 +8,7 @@ final class AlarmEngine: ObservableObject {
     @Published private(set) var isRinging = false
     @Published private(set) var ringingAlarm: AlarmItem?
 
-    private var timer: Timer?
+    private var deadlineTimer: Timer?
     private let store: AlarmStore
     private let audioManager: AudioManager
 
@@ -27,6 +27,8 @@ final class AlarmEngine: ObservableObject {
     private var maximumDurationTimer: Timer?
     private var wakeObserver: NSObjectProtocol?
     private var activeObserver: NSObjectProtocol?
+    private var clockObserver: NSObjectProtocol?
+    private var storeCancellable: AnyCancellable?
 
     private enum TickReason { case regular, wake }
 
@@ -36,12 +38,7 @@ final class AlarmEngine: ObservableObject {
     }
 
     func start() {
-        guard timer == nil else { return }
-        let t = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.tick(reason: .regular)
-        }
-        RunLoop.main.add(t, forMode: .common)
-        timer = t
+        guard deadlineTimer == nil else { return }
         wakeObserver = NotificationCenter.default.addObserver(
             forName: NSWorkspace.didWakeNotification,
             object: nil,
@@ -52,16 +49,27 @@ final class AlarmEngine: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in self?.tick(reason: .regular) }
+        clockObserver = NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("NSSystemClockDidChangeNotification"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in self?.tick(reason: .regular) }
+        storeCancellable = store.objectWillChange.sink { [weak self] _ in
+            DispatchQueue.main.async { self?.scheduleNextDeadline() }
+        }
         tick(reason: .regular)
     }
 
     func stop() {
-        timer?.invalidate()
-        timer = nil
+        deadlineTimer?.invalidate()
+        deadlineTimer = nil
         if let wakeObserver { NotificationCenter.default.removeObserver(wakeObserver) }
         if let activeObserver { NotificationCenter.default.removeObserver(activeObserver) }
+        if let clockObserver { NotificationCenter.default.removeObserver(clockObserver) }
         wakeObserver = nil
         activeObserver = nil
+        clockObserver = nil
+        storeCancellable = nil
     }
 
     private func tick(reason: TickReason = .regular) {
@@ -73,6 +81,18 @@ final class AlarmEngine: ObservableObject {
             pendingCandidates.append(candidate)
         }
         startNextIfNeeded()
+        scheduleNextDeadline()
+    }
+
+    private func scheduleNextDeadline() {
+        deadlineTimer?.invalidate()
+        deadlineTimer = nil
+        guard let date = store.nextAlarmFire(at: Date()).date else { return }
+        let interval = max(0.1, date.timeIntervalSinceNow)
+        deadlineTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: false) { [weak self] _ in
+            self?.deadlineTimer = nil
+            self?.tick(reason: .regular)
+        }
     }
 
     private func dueCandidate(for alarm: AlarmItem, now: Date, reason: TickReason) -> FireCandidate? {
@@ -243,5 +263,6 @@ final class AlarmEngine: ObservableObject {
         currentCandidate = nil
         AlarmPopupController.dismiss()
         startNextIfNeeded()
+        scheduleNextDeadline()
     }
 }

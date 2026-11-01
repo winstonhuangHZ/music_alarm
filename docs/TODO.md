@@ -5,10 +5,8 @@ are removed after their version is committed and pushed.
 
 ## Remaining
 
-- [ ] Add detailed fallback choice and playback diagnostics.
 - [ ] Add fallback choice and detailed playback diagnostics.
-- [ ] Add occurrence history and explicit system time/timezone/DST handling.
-- [ ] Add cross-process storage locking or migrate shared data to SQLite transactions.
+- [ ] Add occurrence history and user-visible time/timezone/DST diagnostics.
 - [ ] Add restore preview and conflict handling for backups.
 - [ ] Add orphaned-audio cleanup and content-hash duplicate detection.
 - [ ] Add reliability diagnostics, accessibility coverage, and UI automation tests.
@@ -35,6 +33,12 @@ are removed after their version is committed and pushed.
 - Added skip-next occurrence for repeating alarms and configurable snooze duration.
 - Added backup export and validated restore for alarms, audio metadata, and audio files.
 - Backups use relative audio paths and do not delete the current data until validation succeeds.
+
+## Completed in 2.12.0
+
+- Added a cross-process file lock around shared JSON writes.
+- Replaced the repeating one-second alarm scan with a timer for the nearest computed deadline.
+- Reschedules the deadline after store changes, application activation, wake, and system clock changes.
 
 ## Completed in 2.10.0
 

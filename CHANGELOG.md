@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.12.0 - unreleased
+
+### Scheduling reliability
+
+- Added a cross-process file lock around shared JSON writes.
+- Replaced the repeating one-second alarm scan with a timer for the nearest computed deadline.
+- Reschedules after store changes, application activation, Mac wake, and system clock changes.
+
 ## 2.11.0 - unreleased
 
 ### Backup and alarm controls
