@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.20.1 - unreleased
+
+### Application icon loading fix
+
+- Declared both the generated `AppIcon.icns` file and its bundle icon name in `Info.plist` so Finder and Dock can resolve the icon reliably.
+- Kept the icon generation and signing order unchanged, with the final bundle plist and icon resource validated after each build.
+
 ## 2.20.0 - unreleased
 
 ### Application icon redesign

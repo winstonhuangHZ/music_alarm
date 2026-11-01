@@ -8,6 +8,10 @@ are removed after their version is committed and pushed.
 暂无 2.18.0 之前已确定且未完成的项目。后续功能候选会在确认范围后加入这里，完成后从 Remaining
 移动到对应版本的 Completed 小节。
 
+## Completed in 2.20.1
+
+- Fixed the application bundle icon declaration so the generated `AppIcon.icns` is discoverable by Finder and Dock.
+
 ## Completed in 2.20.0
 
 - Redesigned the macOS application icon around the alarm clock, music note, and Dawn Flow brand palette.
