@@ -9,6 +9,17 @@ let side: CGFloat = 1024
 let image = NSImage(size: NSSize(width: side, height: side))
 image.lockFocus()
 
+// Leave a macOS-style visual safety margin around the complete mark. The
+// source artwork is intentionally larger than the final displayed artwork so
+// the icon does not look oversized beside native applications in Finder or the
+// Dock.
+let artworkScale: CGFloat = 0.84
+let artworkContext = NSGraphicsContext.current!.cgContext
+artworkContext.saveGState()
+artworkContext.translateBy(x: side / 2, y: side / 2)
+artworkContext.scaleBy(x: artworkScale, y: artworkScale)
+artworkContext.translateBy(x: -side / 2, y: -side / 2)
+
 let backgroundTop = NSColor(calibratedRed: 0.16, green: 0.11, blue: 0.29, alpha: 1.0)
 let backgroundBottom = NSColor(calibratedRed: 0.07, green: 0.08, blue: 0.16, alpha: 1.0)
 let plum = NSColor(calibratedRed: 0.16, green: 0.11, blue: 0.25, alpha: 1.0)
@@ -130,6 +141,8 @@ let highlight = NSBezierPath(ovalIn: innerRect.insetBy(dx: 20, dy: 20))
 NSColor.white.withAlphaComponent(0.20).setStroke()
 highlight.lineWidth = 6
 highlight.stroke()
+
+artworkContext.restoreGState()
 
 image.unlockFocus()
 

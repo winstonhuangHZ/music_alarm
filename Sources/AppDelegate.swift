@@ -148,7 +148,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if appSettings.showMenuBarItem {
             if statusItem == nil {
                 let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-                item.button?.title = "⏰"
+                item.button?.image = NSImage(systemSymbolName: "alarm.fill", accessibilityDescription: L("Music Alarm"))
+                item.button?.imagePosition = .imageOnly
                 let menu = NSMenu()
                 menu.addItem(withTitle: L("Open Music Alarm"),
                              action: #selector(showMainWindowFromMenu),
@@ -178,7 +179,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.terminate(nil)
     }
 
-    @objc private func openSettings() {
+    @objc func openSettings() {
         if let settingsWindow {
             settingsWindow.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -188,12 +189,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let hosting = NSHostingView(rootView: SettingsView(settings: appSettings)
             .environmentObject(store)
             .environmentObject(engine))
-        let settingsWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 500, height: 680),
-                                       styleMask: [.titled, .closable],
+        let settingsWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 720, height: 760),
+                                       styleMask: [.titled, .closable, .resizable],
                                        backing: .buffered,
                                        defer: false)
         settingsWindow.title = L("Settings")
         settingsWindow.isReleasedWhenClosed = false
+        settingsWindow.minSize = NSSize(width: 680, height: 640)
         settingsWindow.contentView = hosting
         settingsWindow.center()
         settingsWindow.makeKeyAndOrderFront(nil)

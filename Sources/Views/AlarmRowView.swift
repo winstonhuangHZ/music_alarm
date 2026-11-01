@@ -24,8 +24,8 @@ struct AlarmRowView: View {
                     .font(.system(size: 30, weight: .semibold, design: .rounded))
                     .foregroundColor(alarm.isEnabled ? Color.primary : Color.secondary)
                 HStack(spacing: 6) {
-                    Text(repeatIcon(for: alarm.repeatType))
-                        .font(.system(size: 11))
+                    Image(systemName: repeatIcon(for: alarm.repeatType))
+                        .font(.system(size: 11, weight: .medium))
                     Text(alarm.repeatText)
                         .font(.caption)
                     if alarm.snoozeUntil != nil {
@@ -53,7 +53,8 @@ struct AlarmRowView: View {
             Spacer()
 
             HStack(spacing: 6) {
-                Text(alarm.hasSound ? alarm.sourceSummary : "⚠️")
+                Image(systemName: alarm.hasSound ? "music.note.list" : "exclamationmark.triangle.fill")
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundColor(alarm.hasSound ? Color(NSColor.controlAccentColor) : Color.orange)
                 Text(alarm.audioDisplayName)
                     .font(.caption)
@@ -63,8 +64,8 @@ struct AlarmRowView: View {
             .frame(maxWidth: 180, alignment: .trailing)
 
             Button(action: { self.onEdit(self.alarm) }) {
-                Text("✏️")
-                    .font(.system(size: 14))
+                Image(systemName: "pencil")
+                    .font(.system(size: 13, weight: .medium))
             }
             .buttonStyle(PlainButtonStyle())
             .accessibilityLabel(L("Edit Alarm"))
@@ -163,10 +164,10 @@ struct AlarmRowView: View {
 
     private func repeatIcon(for type: RepeatType) -> String {
         switch type {
-        case .once: return "①"
-        case .daily: return "↻"
-        case .weekdays: return "⑤"
-        case .custom: return "⑦"
+        case .once: return "calendar"
+        case .daily: return "repeat"
+        case .weekdays: return "calendar.badge.clock"
+        case .custom: return "calendar.badge.plus"
         }
     }
 

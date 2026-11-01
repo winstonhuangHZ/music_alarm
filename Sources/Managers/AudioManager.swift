@@ -137,13 +137,20 @@ extension AudioManager: AVAudioPlayerDelegate {
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         DispatchQueue.main.async {
             guard self.player === player else { return }
-            if self.isRinging {
+            let wasRinging = self.isRinging
+
+            // Clear the completed player before asking the engine to start the
+            // next track. This makes the transition explicit and prevents the
+            // old player from being mistaken for the active playback session.
+            self.player = nil
+            self.isPlaying = false
+            self.currentURL = nil
+            self.nowPlayingName = nil
+            self.fadeTimer?.invalidate()
+            self.fadeTimer = nil
+
+            if wasRinging {
                 self.onTrackFinished?()
-            } else {
-                self.player = nil
-                self.isPlaying = false
-                self.currentURL = nil
-                self.nowPlayingName = nil
             }
         }
     }

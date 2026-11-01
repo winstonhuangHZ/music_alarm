@@ -223,8 +223,8 @@ struct AddAlarmView: View {
     /// One editable row in the playlist: icon + name + reorder/remove buttons.
     private func trackRow(_ track: AudioTrack, at idx: Int) -> some View {
         let row = HStack(spacing: 10) {
-            Text(track.icon)
-                .font(.system(size: 14))
+            Image(systemName: track.icon)
+                .font(.system(size: 14, weight: .medium))
             Text(track.displayName)
                 .font(.caption)
                 .lineLimit(1)
@@ -249,18 +249,18 @@ struct AddAlarmView: View {
             }
             if idx > 0 {
                 Button(action: { self.moveTrackUp(idx) }) {
-                    Text("▲").font(.system(size: 12))
+                    Image(systemName: "chevron.up").font(.system(size: 11, weight: .semibold))
                 }
                 .buttonStyle(PlainButtonStyle())
             }
             if idx < tracks.count - 1 {
                 Button(action: { self.moveTrackDown(idx) }) {
-                    Text("▼").font(.system(size: 12))
+                    Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
                 }
                 .buttonStyle(PlainButtonStyle())
             }
             Button(action: { self.removeTrack(at: idx) }) {
-                Text("✖️").font(.system(size: 12))
+                Image(systemName: "xmark").font(.system(size: 11, weight: .semibold))
             }
             .buttonStyle(PlainButtonStyle())
         }
@@ -299,14 +299,14 @@ struct AddAlarmView: View {
                     }
                 }) {
                     HStack(spacing: 6) {
-                        Text("📁")
+                        Image(systemName: "folder")
                         Text(L("Import & Add"))
                     }
                 }
                 if selectedAudioID != nil {
                     Button(action: { self.addSelectedLocal() }) {
                         HStack(spacing: 6) {
-                            Text("➕")
+                            Image(systemName: "plus")
                             Text(L("Add to Playlist"))
                         }
                     }

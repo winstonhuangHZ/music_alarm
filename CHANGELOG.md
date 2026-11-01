@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.21.1 - unreleased
+
+### Playback and wake confirmation
+
+- Fixed the three-second wake confirmation so the long-press gesture is handled by a direct gesture surface on macOS.
+- Fixed completed playlist tracks being retained as the active player while the next track was starting.
+- Made playlist advancement explicitly select the next track and preserve the configured loop or stop behavior.
+
+## 2.21.0 - unreleased
+
+### Interface polish
+
+- Replaced decorative emoji in the main window, alarm rows, playlist editor, audio library, and alarm popup with native SF Symbols.
+- Added a visible Settings button to the main window footer while keeping the menu command available.
+- Rebuilt the Settings window as a wider, resizable, vertically scrollable layout with stable label and control columns.
+- Fixed settings labels being clipped in Chinese and English layouts and completed the visible Simplified Chinese settings and backup translations.
+- Added the application name to every localization bundle for status item accessibility text.
+
+## 2.20.3 - unreleased
+
+### Application icon proportions
+
+- Added a macOS-style transparent safety margin around the application icon artwork.
+- Reduced the visual mark to 84% of the canvas so it sits closer to the apparent size of native applications in Finder and the Dock.
+
 ## 2.20.2 - unreleased
 
 ### Playlist layout

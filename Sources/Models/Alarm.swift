@@ -153,7 +153,7 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     /// Count of tracks grouped by source for display.
     var sourceSummary: String {
         let local = tracks.filter { if case .local = $0 { return true }; return false }.count
-        if local > 0 { return "🎵 \(local)" }
+        if local > 0 { return String(format: L("%d tracks"), local) }
         return L("No audio")
     }
 
