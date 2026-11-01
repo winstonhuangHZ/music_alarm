@@ -157,12 +157,12 @@ struct ReliabilityCheckView: View {
         if unusableLibraryAudio.isEmpty {
             results.append(.pass(
                 title: L("Audio library"),
-                detail: String(format: L("%@ imported audio items are present and playable."), store.importedAudios.count)
+                detail: String(format: L("%@ imported audio items are present and playable."), "\(store.importedAudios.count)")
             ))
         } else {
             results.append(.warning(
                 title: L("Audio library"),
-                detail: String(format: L("%@ imported audio items need attention."), unusableLibraryAudio.count)
+                detail: String(format: L("%@ imported audio items need attention."), "\(unusableLibraryAudio.count)")
             ))
         }
 
@@ -170,17 +170,17 @@ struct ReliabilityCheckView: View {
         if alarmsWithoutPlayableTrack.isEmpty {
             results.append(.pass(
                 title: L("Alarm audio"),
-                detail: String(format: L("%@ enabled alarms have a playable track."), enabledAlarms.count)
+                detail: String(format: L("%@ enabled alarms have a playable track."), "\(enabledAlarms.count)")
             ))
         } else if fallbackAvailable {
             results.append(.warning(
                 title: L("Alarm audio"),
-                detail: String(format: L("%@ enabled alarms have no playable track; fallback will be used."), alarmsWithoutPlayableTrack.count)
+                detail: String(format: L("%@ enabled alarms have no playable track; fallback will be used."), "\(alarmsWithoutPlayableTrack.count)")
             ))
         } else {
             results.append(.failure(
                 title: L("Alarm audio"),
-                detail: String(format: L("%@ enabled alarms have no playable track or fallback."), alarmsWithoutPlayableTrack.count)
+                detail: String(format: L("%@ enabled alarms have no playable track or fallback."), "\(alarmsWithoutPlayableTrack.count)")
             ))
         }
 
@@ -189,7 +189,7 @@ struct ReliabilityCheckView: View {
             let volumeText = output.volume.map { String(format: "%.0f%%", $0 * 100) } ?? L("volume unavailable")
             results.append(.pass(
                 title: L("Output device"),
-                detail: String(format: L("%@, system volume %@."), output.name, volumeText)
+                detail: String(format: L("%@, system volume %@."), output.name as NSString, volumeText as NSString)
             ))
         } else {
             results.append(.failure(

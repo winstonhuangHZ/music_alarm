@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.25.1 - unreleased
+
+### Reliability Check crash fix
+
+- Fixed a crash when opening or running Reliability Check on macOS by passing numeric counts as string objects to localized `%@` format arguments.
+- Explicitly bridged output-device and volume strings before formatting the diagnostic row.
+
 ## 2.25.0 - unreleased
 
 ### macOS integrations

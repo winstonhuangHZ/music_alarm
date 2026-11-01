@@ -7,6 +7,10 @@ are removed after their version is committed and pushed.
 
 暂无已确定且未完成的项目。新功能先加入本列表，完成并验证后再移到对应版本的 Completed 小节。
 
+## Completed in 2.25.1
+
+- Fixed the Reliability Check crash caused by passing `Int` values to `%@` localized format placeholders.
+
 ## Completed in 2.25.0
 
 - Added native alarm notifications with Stop, Snooze, and conditional wake-confirmation actions, and guarded against stale notification actions.
