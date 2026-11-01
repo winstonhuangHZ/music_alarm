@@ -26,6 +26,12 @@
 
 保存 `[ImportedAudio]`。每项记录稳定 UUID、显示名称和共享音频文件路径。
 
+### `occurrences.json`
+
+保存每次具体闹钟 occurrence 的历史。记录计划时间、实际开始/停止/确认时间、
+发生时的时区和 UTC 偏移、夏令时状态、是否使用系统 fallback、尝试过的音轨，
+以及播放失败原因。它与 `alarms.json` 分离，因此编辑下一次计划不会覆盖历史。
+
 ### `Audio/<UUID>.<ext>`
 
 默认导入时将源文件复制到共享目录，闹钟记录引用共享副本，源文件移动后不影响已经导入的音频。用户可以在设置中关闭复制，此时记录原始绝对路径，原文件移动或删除后会显示失效状态。
@@ -71,4 +77,7 @@
 
 ## 备份
 
-备份目录包含 `manifest.json`、`alarms.json`、`imported-audios.json` 和 `Audio/`。备份内的音频路径使用相对路径，恢复时会复制到当前共享 `Audio/` 目录并重写所有闹钟引用。恢复会先校验清单、JSON 和路径范围，再替换当前共享列表。
+备份目录包含 `manifest.json`、`alarms.json`、`imported-audios.json`、`occurrences.json` 和 `Audio/`。
+备份内的音频路径使用相对路径，恢复时会复制到当前共享 `Audio/` 目录并重写所有闹钟引用。
+恢复会先校验清单、JSON 和路径范围，再替换当前共享列表。版本 1 备份没有 occurrence
+历史，恢复时按空历史处理。

@@ -11,6 +11,7 @@ final class SharedAlarmStorage {
     let audioDirectoryURL: URL
     let alarmsURL: URL
     let importedAudiosURL: URL
+    let occurrencesURL: URL
 
     private let fileManager: FileManager
 
@@ -42,6 +43,7 @@ final class SharedAlarmStorage {
         audioDirectoryURL = self.rootURL.appendingPathComponent("Audio", isDirectory: true)
         alarmsURL = self.rootURL.appendingPathComponent("alarms.json")
         importedAudiosURL = self.rootURL.appendingPathComponent("imported-audios.json")
+        occurrencesURL = self.rootURL.appendingPathComponent("occurrences.json")
     }
 
     func prepareDirectories() throws {
@@ -52,6 +54,7 @@ final class SharedAlarmStorage {
     func containsSharedData() -> Bool {
         fileManager.fileExists(atPath: alarmsURL.path)
             || fileManager.fileExists(atPath: importedAudiosURL.path)
+            || fileManager.fileExists(atPath: occurrencesURL.path)
     }
 
     func loadResult<T: Decodable>(_ type: T.Type, from url: URL) -> LoadResult<T> {

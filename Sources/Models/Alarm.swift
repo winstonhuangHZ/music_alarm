@@ -36,6 +36,7 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     var wakeStoppedAt: Date?
     var wakeConfirmedAt: Date?
     var wakeConfirmationDeadline: Date?
+    var wakeOccurrenceID: UUID? = nil
     var skipNextOccurrenceKey: String = ""
     var snoozeMinutes: Int = 5
 
@@ -69,7 +70,7 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case id, hour, minute, repeatType, isEnabled, label, scheduledDate, weekdays
         case requiresWakeConfirmation, wakeConfirmationState
-        case wakeStartedAt, wakeStoppedAt, wakeConfirmedAt, wakeConfirmationDeadline
+        case wakeStartedAt, wakeStoppedAt, wakeConfirmedAt, wakeConfirmationDeadline, wakeOccurrenceID
         case skipNextOccurrenceKey, snoozeMinutes
         case fadeDurationSeconds, targetVolumePercent, maximumPlaybackMinutes, loopsPlaylist
         case tracks, audioNeedsSelection
@@ -97,6 +98,7 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         wakeStoppedAt = try c.decodeIfPresent(Date.self, forKey: .wakeStoppedAt)
         wakeConfirmedAt = try c.decodeIfPresent(Date.self, forKey: .wakeConfirmedAt)
         wakeConfirmationDeadline = try c.decodeIfPresent(Date.self, forKey: .wakeConfirmationDeadline)
+        wakeOccurrenceID = try c.decodeIfPresent(UUID.self, forKey: .wakeOccurrenceID)
         skipNextOccurrenceKey = try c.decodeIfPresent(String.self, forKey: .skipNextOccurrenceKey) ?? ""
         snoozeMinutes = try c.decodeIfPresent(Int.self, forKey: .snoozeMinutes) ?? 5
         fadeDurationSeconds = try c.decodeIfPresent(Int.self, forKey: .fadeDurationSeconds) ?? 20

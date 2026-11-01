@@ -22,6 +22,7 @@ final class AlarmEngine: ObservableObject {
     /// Index of the currently playing track (for sequential playlist support).
     private var currentTrackIndex: Int = 0
     private var currentCandidate: FireCandidate?
+    private var currentOccurrenceID: UUID?
     private var pendingCandidates: [FireCandidate] = []
     private var claimedAlarmIDs = Set<UUID>()
     private var maximumDurationTimer: Timer?
@@ -74,6 +75,7 @@ final class AlarmEngine: ObservableObject {
 
     private func tick(reason: TickReason = .regular) {
         let now = Date()
+        store.reconcileWakeConfirmationStates(now: now)
         for alarm in store.alarms where alarm.isEnabled {
             guard !claimedAlarmIDs.contains(alarm.id),
                   let candidate = dueCandidate(for: alarm, now: now, reason: reason) else { continue }
@@ -137,7 +139,11 @@ final class AlarmEngine: ObservableObject {
         isRinging = true
         ringingAlarm = alarm
         currentTrackIndex = 0
-        playCurrentTrack()
+        currentOccurrenceID = nil
+        guard playCurrentTrack() else {
+            finishCurrent()
+            return
+        }
         maximumDurationTimer?.invalidate()
         if alarm.maximumPlaybackMinutes > 0 {
             maximumDurationTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(alarm.maximumPlaybackMinutes * 60),
@@ -155,22 +161,26 @@ final class AlarmEngine: ObservableObject {
 
     /// Plays the current track. Failed tracks are skipped before falling back
     /// to the system sound.
-    private func playCurrentTrack() {
-        guard let alarm = ringingAlarm else { return }
+    @discardableResult
+    private func playCurrentTrack() -> Bool {
+        guard let alarm = ringingAlarm else { return false }
         let tracks = alarm.tracks
+        var attemptedTracks: [String] = []
 
         while currentTrackIndex < tracks.count {
             let track = tracks[currentTrackIndex]
             switch track {
             case .local(_, let path, _):
+                attemptedTracks.append(track.displayName)
                 if FileManager.default.fileExists(atPath: path),
                    audioManager.ring(url: URL(fileURLWithPath: path),
                                      name: track.displayName,
                                      numberOfLoops: 0,
                                      fadeDuration: TimeInterval(alarm.fadeDurationSeconds),
                                      targetVolume: Float(alarm.targetVolumePercent) / 100) {
-                    markPlaybackStartedIfNeeded()
-                    return
+                    markPlaybackStartedIfNeeded(usedFallback: false,
+                                                attemptedTracks: attemptedTracks)
+                    return true
                 }
             case .unavailable:
                 break
@@ -179,18 +189,33 @@ final class AlarmEngine: ObservableObject {
         }
 
         if audioManager.ringFallback() {
-            markPlaybackStartedIfNeeded()
+            markPlaybackStartedIfNeeded(usedFallback: true,
+                                        attemptedTracks: attemptedTracks)
+            return true
         }
+        if let candidate = currentCandidate, !candidate.isTest, currentOccurrenceID == nil {
+            store.markPlaybackFailed(id: candidate.alarm.id,
+                                     occurrence: candidate.occurrence,
+                                     isSnooze: candidate.isSnooze,
+                                     reason: attemptedTracks.isEmpty
+                                        ? L("No playable audio or system fallback")
+                                        : L("All configured audio tracks failed") ,
+                                     attemptedTracks: attemptedTracks)
+        }
+        return false
     }
 
-    private func markPlaybackStartedIfNeeded() {
+    private func markPlaybackStartedIfNeeded(usedFallback: Bool,
+                                             attemptedTracks: [String]) {
         guard let candidate = currentCandidate,
               !candidate.isTest,
               let liveAlarm = store.alarms.first(where: { $0.id == candidate.alarm.id }) else { return }
         if candidate.isSnooze || liveAlarm.lastFiredKey != AlarmTimeUtil.fireKey(for: candidate.occurrence) {
-            store.markPlaybackStarted(id: candidate.alarm.id,
-                                      occurrence: candidate.occurrence,
-                                      isSnooze: candidate.isSnooze)
+            currentOccurrenceID = store.markPlaybackStarted(id: candidate.alarm.id,
+                                                             occurrence: candidate.occurrence,
+                                                             isSnooze: candidate.isSnooze,
+                                                             usedFallback: usedFallback,
+                                                             attemptedTracks: attemptedTracks)
         }
     }
 
@@ -203,11 +228,13 @@ final class AlarmEngine: ObservableObject {
             if alarm.loopsPlaylist {
                 currentTrackIndex = 0
             } else {
-                audioManager.stop()
+                stopRinging()
                 return
             }
         }
-        playCurrentTrack()
+        if !playCurrentTrack() {
+            finishCurrent()
+        }
     }
 
     /// Starts a non-persistent test session using the first enabled alarm with
@@ -260,6 +287,7 @@ final class AlarmEngine: ObservableObject {
         if let candidate = currentCandidate {
             claimedAlarmIDs.remove(candidate.alarm.id)
         }
+        currentOccurrenceID = nil
         currentCandidate = nil
         AlarmPopupController.dismiss()
         startNextIfNeeded()

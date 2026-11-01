@@ -49,6 +49,37 @@ struct SettingsView: View {
                 Text(L("Music Alarm keeps one running instance so alarm playback is not duplicated when the app is opened from another copy."))
                     .font(.caption)
                     .foregroundColor(.secondary)
+                diagnosticsView
+            }
+
+            Section(header: Text(L("Recent alarm history"))) {
+                if store.recentOccurrences(limit: 8).isEmpty {
+                    Text(L("No history"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    ForEach(store.recentOccurrences(limit: 8)) { occurrence in
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack {
+                                Text(occurrence.label.isEmpty ? L("Alarm") : occurrence.label)
+                                    .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                Text(occurrence.outcome.title)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundColor(occurrence.outcome == .failed ? .red : .secondary)
+                            }
+                            Text(dateString(occurrence.scheduledDate))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            if let reason = occurrence.failureReason, !reason.isEmpty {
+                                Text(reason)
+                                    .font(.caption2)
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
             }
 
             Section(header: Text(L("Backup and restore"))) {
@@ -86,7 +117,7 @@ struct SettingsView: View {
             }
         }
         .padding(20)
-        .frame(width: 430, height: 390)
+        .frame(width: 430, height: 560)
         .alert(isPresented: $showImportConfirmation) {
             Alert(title: Text(L("Restore backup?")),
                   message: Text(L("The current shared alarms and audio library will be replaced.")),
@@ -101,5 +132,31 @@ struct SettingsView: View {
                   },
                   secondaryButton: .cancel())
         }
+    }
+
+    private var diagnosticsView: some View {
+        let zone = TimeZone.current
+        let offset = zone.secondsFromGMT(for: Date())
+        let sign = offset >= 0 ? "+" : "-"
+        let absoluteOffset = abs(offset)
+        let hours = absoluteOffset / 3600
+        let minutes = (absoluteOffset % 3600) / 60
+        let nextDate = store.nextAlarmFire(at: Date()).date
+        return VStack(alignment: .leading, spacing: 3) {
+            Text("\(L("Current system time")): \(dateString(Date()))")
+            Text("\(L("Time zone")): \(zone.identifier) (UTC\(sign)\(String(format: "%02d:%02d", hours, minutes)))")
+            Text("\(L("Daylight saving time")): \(zone.isDaylightSavingTime(for: Date()) ? L("On") : L("Off"))")
+            Text("\(L("Next scheduler deadline")): \(nextDate.map(dateString) ?? L("No upcoming alarm"))")
+        }
+        .font(.caption2)
+        .foregroundColor(.secondary)
+    }
+
+    private func dateString(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.dateStyle = .short
+        formatter.timeStyle = .medium
+        return formatter.string(from: date)
     }
 }

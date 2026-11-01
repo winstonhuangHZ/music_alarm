@@ -41,6 +41,7 @@ struct SharedAlarmStorageSmoke {
         confirmationStore.markPlaybackStarted(id: confirmationAlarm.id,
                                                occurrence: Date(),
                                                isSnooze: false)
+        precondition(confirmationStore.occurrences.count == 1)
         precondition(confirmationStore.alarms[0].isEnabled)
         precondition(confirmationStore.alarms[0].wakeConfirmationState == .pending)
         confirmationStore.stopAlarm(confirmationAlarm)
@@ -51,6 +52,7 @@ struct SharedAlarmStorageSmoke {
         precondition(confirmationStore.alarms[0].wakeStartedAt != nil)
         precondition(confirmationStore.alarms[0].wakeStoppedAt != nil)
         precondition(confirmationStore.alarms[0].wakeConfirmedAt != nil)
+        precondition(confirmationStore.occurrences[0].outcome == .confirmed)
 
         let legacyAlarmJSON = """
         [{"hour":7,"minute":0,"repeatType":"Once","isEnabled":true,"tracks":[]}]
@@ -109,6 +111,21 @@ struct SharedAlarmStorageSmoke {
         let restoredStore = AlarmStore(storage: SharedAlarmStorage(rootURL: restoredRoot))
         try BackupManager.importBackup(from: backupFolder, into: restoredStore)
         precondition(restoredStore.alarms.first?.label == "Backup test")
+        precondition(FileManager.default.fileExists(atPath: backupFolder.appendingPathComponent("occurrences.json").path))
+
+        var failedAlarm = AlarmItem()
+        failedAlarm.label = "Failure test"
+        failedAlarm.repeatType = .once
+        let failedOccurrence = Date()
+        restoredStore.addAlarm(failedAlarm)
+        restoredStore.markPlaybackFailed(id: failedAlarm.id,
+                                         occurrence: failedOccurrence,
+                                         isSnooze: false,
+                                         reason: "test failure")
+        precondition(restoredStore.occurrences.contains {
+            $0.alarmID == failedAlarm.id && $0.outcome == .failed && $0.failureReason == "test failure"
+        })
+        precondition(restoredStore.alarms.first(where: { $0.id == failedAlarm.id })?.isEnabled == false)
 
         print("shared storage smoke test passed")
     }

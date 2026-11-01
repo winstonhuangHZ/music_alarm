@@ -10,6 +10,7 @@ Music Alarm 的核心可靠性来自三个边界：数据存储、闹钟调度�
 AppDelegate
 ├── AlarmStore
 │   └── SharedAlarmStorage
+│   └── AlarmOccurrence history
 ├── AudioManager
 ├── AlarmEngine
 ├── AppSettings
@@ -42,6 +43,9 @@ AppDelegate
 
 当闹钟开启起床确认时，播放开始后状态变为 pending；停止声音会变为 stoppedWithoutConfirmation；用户确认后变为 confirmed。一次性闹钟只有 confirmed 才会关闭。
 
+每次播放成功或失败都会写入一个 `AlarmOccurrence`；失败时会消费当前 occurrence
+并结束弹窗，避免损坏音频或不可用的系统 fallback 让引擎永久停留在 ringing 状态。
+
 每个闹钟保存播放渐入、目标音量、最大播放时长和播放列表是否循环。测试闹钟使用同一套播放和弹窗路径，但不会修改持久化闹钟状态。
 
 起床确认由 `AppSettings` 全局开启，再由单个闹钟选择是否要求确认。确认期限和方式也由设置控制，时间戳保存在闹钟记录中。
@@ -49,6 +53,8 @@ AppDelegate
 ### `AudioManager`
 
 负责本地文件预览、闹钟播放、渐入和系统 fallback。播放失败会返回给调度器，由调度器尝试下一个音频。完成回调会检查当前播放器身份，避免旧回调推进新的播放状态。
+
+当播放列表不循环并且最后一首完成时，`AlarmEngine` 走统一的 stop/finish 路径，确保音频、弹窗、最大播放计时器和候选队列同时清理。
 
 ### 应用生命周期
 
@@ -77,5 +83,5 @@ flowchart TD
 
 ## 后续阶段
 
-1. 增加系统通知和完整的后台诊断。
-2. 做完整的 UI 自动化与人工验收矩阵。
+1. 增加备份恢复预览、冲突处理、孤立音频清理和内容 hash 去重。
+2. 做完整的可靠性诊断、无障碍覆盖、UI 自动化与人工验收矩阵。

@@ -6,7 +6,6 @@ are removed after their version is committed and pushed.
 ## Remaining
 
 - [ ] Add fallback choice and detailed playback diagnostics.
-- [ ] Add occurrence history and user-visible time/timezone/DST diagnostics.
 - [ ] Add restore preview and conflict handling for backups.
 - [ ] Add orphaned-audio cleanup and content-hash duplicate detection.
 - [ ] Add reliability diagnostics, accessibility coverage, and UI automation tests.
@@ -39,6 +38,14 @@ are removed after their version is committed and pushed.
 - Added a cross-process file lock around shared JSON writes.
 - Replaced the repeating one-second alarm scan with a timer for the nearest computed deadline.
 - Reschedules the deadline after store changes, application activation, wake, and system clock changes.
+
+## Completed in 2.13.0
+
+- Added durable occurrence history with playback, snooze, confirmation, failure, and expiry outcomes.
+- Added time zone, UTC offset, daylight-saving, attempted-track, fallback, and failure diagnostics.
+- Added recent alarm history and scheduler deadline diagnostics to Settings.
+- Added occurrence history to backup export and restore, with compatibility for format 1 backups.
+- Finished failed playback and naturally completed non-looping playlists through the normal engine cleanup path.
 
 ## Completed in 2.10.0
 

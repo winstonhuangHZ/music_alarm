@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.13.0 - unreleased
+
+### Occurrence history and playback diagnostics
+
+- Added durable history for started, stopped, confirmed, snoozed, failed, and expired alarm occurrences.
+- Recorded scheduled/actual times, time zone, UTC offset, daylight-saving state, fallback usage, attempted tracks, and failure reasons.
+- Added recent alarm history and scheduler diagnostics to Settings.
+- Added occurrence history to backup export and restore while keeping format 1 backups readable.
+- Failed playback now ends the ringing state instead of leaving a stuck popup.
+- Non-looping playlists now finish through the normal cleanup path.
+
 ## 2.12.0 - unreleased
 
 ### Scheduling reliability

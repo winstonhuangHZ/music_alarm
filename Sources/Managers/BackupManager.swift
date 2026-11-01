@@ -6,6 +6,29 @@ struct MusicAlarmBackupManifest: Codable {
     let createdAt: Date
     let appVersion: String
     let includesAudio: Bool
+    let includesOccurrences: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case formatVersion, createdAt, appVersion, includesAudio, includesOccurrences
+    }
+
+    init(formatVersion: Int, createdAt: Date, appVersion: String,
+         includesAudio: Bool, includesOccurrences: Bool) {
+        self.formatVersion = formatVersion
+        self.createdAt = createdAt
+        self.appVersion = appVersion
+        self.includesAudio = includesAudio
+        self.includesOccurrences = includesOccurrences
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        formatVersion = try c.decode(Int.self, forKey: .formatVersion)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        appVersion = try c.decode(String.self, forKey: .appVersion)
+        includesAudio = try c.decodeIfPresent(Bool.self, forKey: .includesAudio) ?? false
+        includesOccurrences = try c.decodeIfPresent(Bool.self, forKey: .includesOccurrences) ?? false
+    }
 }
 
 enum BackupError: LocalizedError {
@@ -102,13 +125,15 @@ enum BackupManager {
             }
         }
 
-        let manifest = MusicAlarmBackupManifest(formatVersion: 1,
+        let manifest = MusicAlarmBackupManifest(formatVersion: 2,
                                                 createdAt: Date(),
                                                 appVersion: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
-                                                includesAudio: true)
+                                                includesAudio: true,
+                                                includesOccurrences: true)
         try write(manifest, to: folder.appendingPathComponent("manifest.json"))
         try write(exportedAlarms, to: folder.appendingPathComponent("alarms.json"))
         try write(exportedAudios, to: folder.appendingPathComponent("imported-audios.json"))
+        try write(store.occurrences, to: folder.appendingPathComponent("occurrences.json"))
         return folder
     }
 
@@ -123,11 +148,21 @@ enum BackupManager {
             throw BackupError.invalidBackup(L("Required backup files are missing"))
         }
         let manifest = try read(MusicAlarmBackupManifest.self, from: manifestURL)
-        guard manifest.formatVersion == 1 else {
+        guard manifest.formatVersion == 1 || manifest.formatVersion == 2 else {
             throw BackupError.invalidBackup(L("Unsupported backup format"))
         }
         let backupAlarms = try read([AlarmItem].self, from: alarmsURL)
         let backupAudios = try read([ImportedAudio].self, from: audiosURL)
+        let backupOccurrences: [AlarmOccurrence]
+        let occurrencesURL = folder.appendingPathComponent("occurrences.json")
+        if manifest.formatVersion >= 2 {
+            guard fm.fileExists(atPath: occurrencesURL.path) else {
+                throw BackupError.invalidBackup(L("Occurrence history is missing"))
+            }
+            backupOccurrences = try read([AlarmOccurrence].self, from: occurrencesURL)
+        } else {
+            backupOccurrences = []
+        }
         let storage = store.sharedStorage
         var pathMap: [UUID: String] = [:]
         var restoredAudios: [ImportedAudio] = []
@@ -167,7 +202,9 @@ enum BackupManager {
             restoredAlarms[alarmIndex].audioNeedsSelection = restoredAlarms[alarmIndex].tracks.isEmpty
                 || !restoredAlarms[alarmIndex].tracks.contains(where: \.isPlayable)
         }
-        store.replaceDataFromBackup(alarms: restoredAlarms, importedAudios: restoredAudios)
+        store.replaceDataFromBackup(alarms: restoredAlarms,
+                                    importedAudios: restoredAudios,
+                                    occurrences: backupOccurrences)
     }
 
     private static func write<T: Encodable>(_ value: T, to url: URL) throws {

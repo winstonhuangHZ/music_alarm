@@ -40,6 +40,9 @@ final class AlarmStore: ObservableObject {
     @Published var importedAudios: [ImportedAudio] {
         didSet { save() }
     }
+    @Published var occurrences: [AlarmOccurrence] {
+        didSet { save() }
+    }
 
     private let storage: SharedAlarmStorage
     var sharedStorage: SharedAlarmStorage { storage }
@@ -47,6 +50,7 @@ final class AlarmStore: ObservableObject {
     private let legacyAudiosKey = "MusicAlarm.importedAudios.v1"
     private var alarmsNeedRepair = false
     private var importedAudiosNeedRepair = false
+    private var occurrencesNeedRepair = false
 
     init(storage: SharedAlarmStorage = .shared) {
         self.storage = storage
@@ -54,11 +58,14 @@ final class AlarmStore: ObservableObject {
         if storage.containsSharedData() {
             let loadedAlarms = storage.loadResult([AlarmItem].self, from: storage.alarmsURL)
             let loadedAudios = storage.loadResult([ImportedAudio].self, from: storage.importedAudiosURL)
+            let loadedOccurrences = storage.loadResult([AlarmOccurrence].self, from: storage.occurrencesURL)
 
             alarmsNeedRepair = loadedAlarms.status == .invalid
             importedAudiosNeedRepair = loadedAudios.status == .invalid
+            occurrencesNeedRepair = loadedOccurrences.status == .invalid
             alarms = loadedAlarms.value ?? []
             importedAudios = loadedAudios.value ?? []
+            occurrences = loadedOccurrences.value ?? []
 
             migrateLoadedData()
 
@@ -72,6 +79,10 @@ final class AlarmStore: ObservableObject {
                 _ = storage.save(value, to: storage.importedAudiosURL)
                 importedAudiosNeedRepair = false
             }
+            if loadedOccurrences.status == .recoveredFromBackup, let value = loadedOccurrences.value {
+                _ = storage.save(value, to: storage.occurrencesURL)
+                occurrencesNeedRepair = false
+            }
         } else {
             let legacyAlarms = Self.loadLegacy([AlarmItem].self, key: legacyAlarmsKey)
             var loadedAlarms = legacyAlarms.value ?? []
@@ -82,6 +93,7 @@ final class AlarmStore: ObservableObject {
             storage.migrateLegacyAudio(alarms: &loadedAlarms, importedAudios: &loadedAudios)
             alarms = loadedAlarms
             importedAudios = loadedAudios
+            occurrences = []
 
             // Do not replace unreadable legacy data with empty shared files.
             if !legacyAlarms.hadData || legacyAlarms.value != nil {
@@ -110,6 +122,11 @@ final class AlarmStore: ObservableObject {
         } else {
             NSLog("AlarmStore: skipped saving unreadable audio library until the user changes it")
         }
+        if !occurrencesNeedRepair {
+            _ = storage.save(occurrences, to: storage.occurrencesURL)
+        } else {
+            NSLog("AlarmStore: skipped saving unreadable occurrence history until the user changes it")
+        }
     }
 
     /// Reloads the shared files so separate app copies can converge when one
@@ -117,6 +134,7 @@ final class AlarmStore: ObservableObject {
     func reloadFromSharedStorage() {
         let loadedAlarms = storage.loadResult([AlarmItem].self, from: storage.alarmsURL)
         let loadedAudios = storage.loadResult([ImportedAudio].self, from: storage.importedAudiosURL)
+        let loadedOccurrences = storage.loadResult([AlarmOccurrence].self, from: storage.occurrencesURL)
 
         if let value = loadedAlarms.value {
             alarmsNeedRepair = false
@@ -125,6 +143,10 @@ final class AlarmStore: ObservableObject {
         if let value = loadedAudios.value {
             importedAudiosNeedRepair = false
             importedAudios = value
+        }
+        if let value = loadedOccurrences.value {
+            occurrencesNeedRepair = false
+            occurrences = value
         }
         migrateLoadedData()
     }
@@ -141,13 +163,15 @@ final class AlarmStore: ObservableObject {
         persistAlarmsAfterUserChange()
     }
 
-    func replaceDataFromBackup(alarms: [AlarmItem], importedAudios: [ImportedAudio]) {
+    func replaceDataFromBackup(alarms: [AlarmItem], importedAudios: [ImportedAudio], occurrences: [AlarmOccurrence] = []) {
         alarmsNeedRepair = false
         importedAudiosNeedRepair = false
         self.alarms = alarms
         self.importedAudios = importedAudios
+        self.occurrences = occurrences
         persistAlarmsAfterUserChange()
         persistImportedAudiosAfterUserChange()
+        persistOccurrencesAfterUserChange()
     }
 
     /// Replaces an existing alarm in-place with an edited copy.
@@ -169,6 +193,7 @@ final class AlarmStore: ObservableObject {
             updated.wakeStoppedAt = nil
             updated.wakeConfirmedAt = nil
             updated.wakeConfirmationDeadline = nil
+            updated.wakeOccurrenceID = nil
         } else {
             updated.snoozeUntil = old.snoozeUntil
             updated.lastFiredKey = old.lastFiredKey
@@ -179,11 +204,13 @@ final class AlarmStore: ObservableObject {
                 updated.wakeStoppedAt = nil
                 updated.wakeConfirmedAt = nil
                 updated.wakeConfirmationDeadline = nil
+                updated.wakeOccurrenceID = nil
             } else {
                 updated.wakeStartedAt = old.wakeStartedAt
                 updated.wakeStoppedAt = old.wakeStoppedAt
                 updated.wakeConfirmedAt = old.wakeConfirmedAt
                 updated.wakeConfirmationDeadline = old.wakeConfirmationDeadline
+                updated.wakeOccurrenceID = old.wakeOccurrenceID
             }
         }
         alarms[idx] = updated
@@ -205,8 +232,11 @@ final class AlarmStore: ObservableObject {
 
     /// Records that playback or fallback actually started for an occurrence.
     /// The alarm is not consumed merely because the engine noticed it was due.
-    func markPlaybackStarted(id: UUID, occurrence: Date, isSnooze: Bool) {
-        guard let index = alarms.firstIndex(where: { $0.id == id }) else { return }
+    @discardableResult
+    func markPlaybackStarted(id: UUID, occurrence: Date, isSnooze: Bool,
+                             usedFallback: Bool = false,
+                             attemptedTracks: [String] = []) -> UUID? {
+        guard let index = alarms.firstIndex(where: { $0.id == id }) else { return nil }
         if !isSnooze {
             alarms[index].lastFiredKey = AlarmTimeUtil.fireKey(for: occurrence)
             if alarms[index].skipNextOccurrenceKey == AlarmTimeUtil.fireKey(for: occurrence) {
@@ -227,10 +257,46 @@ final class AlarmStore: ObservableObject {
         } else {
             clearWakeConfirmationState(at: index)
         }
+        let recordID = UUID()
+        occurrences.append(AlarmOccurrence(id: recordID,
+                                           alarmID: id,
+                                           label: alarms[index].label,
+                                           scheduledDate: occurrence,
+                                           actualStartedAt: Date(),
+                                           timezone: .current,
+                                           isSnooze: isSnooze,
+                                           outcome: .started,
+                                           usedFallback: usedFallback,
+                                           attemptedTracks: attemptedTracks))
+        alarms[index].wakeOccurrenceID = recordID
         if alarms[index].repeatType == .once && !requiresConfirmation {
             alarms[index].isEnabled = false
         }
         persistAlarmsAfterUserChange()
+        persistOccurrencesAfterUserChange()
+        return recordID
+    }
+
+    /// Records a playback failure and consumes the concrete occurrence so a
+    /// broken file cannot cause an immediate retry loop.
+    func markPlaybackFailed(id: UUID, occurrence: Date, isSnooze: Bool,
+                            reason: String, attemptedTracks: [String] = []) {
+        guard let index = alarms.firstIndex(where: { $0.id == id }) else { return }
+        if !isSnooze {
+            alarms[index].lastFiredKey = AlarmTimeUtil.fireKey(for: occurrence)
+        }
+        alarms[index].snoozeUntil = nil
+        if alarms[index].repeatType == .once { alarms[index].isEnabled = false }
+        occurrences.append(AlarmOccurrence(alarmID: id,
+                                           label: alarms[index].label,
+                                           scheduledDate: occurrence,
+                                           timezone: .current,
+                                           isSnooze: isSnooze,
+                                           outcome: .failed,
+                                           failureReason: reason,
+                                           attemptedTracks: attemptedTracks))
+        persistAlarmsAfterUserChange()
+        persistOccurrencesAfterUserChange()
     }
 
     func snooze(_ alarm: AlarmItem, minutes: Int? = nil) {
@@ -240,6 +306,9 @@ final class AlarmStore: ObservableObject {
         // Keep the original occurrence key. Snooze is a continuation of that
         // occurrence and must not make the base alarm fire a second time.
         alarms[idx].isEnabled = true // re-armed so the snoozed alarm can fire
+        if let occurrenceID = alarms[idx].wakeOccurrenceID {
+            updateOccurrence(id: occurrenceID, outcome: .snoozed, stoppedAt: Date())
+        }
         persistAlarmsAfterUserChange()
     }
 
@@ -267,7 +336,13 @@ final class AlarmStore: ObservableObject {
             // Keep a one-shot alarm enabled until the user explicitly confirms
             // the wake-up from the alarm row.
             persistAlarmsAfterUserChange()
+            if let occurrenceID = alarms[idx].wakeOccurrenceID {
+                updateOccurrence(id: occurrenceID, outcome: .stopped, stoppedAt: alarms[idx].wakeStoppedAt)
+            }
             return
+        }
+        if let occurrenceID = alarms[idx].wakeOccurrenceID {
+            updateOccurrence(id: occurrenceID, outcome: .stopped, stoppedAt: Date())
         }
         if alarms[idx].repeatType == .once {
             alarms[idx].isEnabled = false
@@ -279,13 +354,23 @@ final class AlarmStore: ObservableObject {
         guard let idx = alarms.firstIndex(where: { $0.id == id }),
               alarms[idx].requiresWakeConfirmation,
               AppSettings.shared.wakeConfirmationEnabled else { return }
-        if let deadline = alarms[idx].wakeConfirmationDeadline, deadline < Date() {
+        if let deadline = alarms[idx].wakeConfirmationDeadline, deadline <= Date() {
             alarms[idx].wakeConfirmationState = .expired
+            if alarms[idx].repeatType == .once { alarms[idx].isEnabled = false }
+            if let occurrenceID = alarms[idx].wakeOccurrenceID {
+                updateOccurrence(id: occurrenceID, outcome: .expired,
+                                 stoppedAt: alarms[idx].wakeStoppedAt ?? Date())
+            }
             persistAlarmsAfterUserChange()
             return
         }
         alarms[idx].wakeConfirmationState = .confirmed
         alarms[idx].wakeConfirmedAt = Date()
+        if let occurrenceID = alarms[idx].wakeOccurrenceID {
+            updateOccurrence(id: occurrenceID, outcome: .confirmed,
+                             stoppedAt: alarms[idx].wakeStoppedAt ?? Date(),
+                             confirmedAt: alarms[idx].wakeConfirmedAt)
+        }
         if alarms[idx].repeatType == .once {
             alarms[idx].isEnabled = false
         }
@@ -298,6 +383,39 @@ final class AlarmStore: ObservableObject {
         alarms[index].wakeStoppedAt = nil
         alarms[index].wakeConfirmedAt = nil
         alarms[index].wakeConfirmationDeadline = nil
+    }
+
+    /// Marks overdue wake confirmations as expired and closes one-shot alarms.
+    func reconcileWakeConfirmationStates(now: Date = Date()) {
+        var changed = false
+        for index in alarms.indices {
+            guard let deadline = alarms[index].wakeConfirmationDeadline,
+                  deadline <= now,
+                  alarms[index].wakeConfirmationState == .pending
+                    || alarms[index].wakeConfirmationState == .stoppedWithoutConfirmation else { continue }
+            alarms[index].wakeConfirmationState = .expired
+            if alarms[index].repeatType == .once { alarms[index].isEnabled = false }
+            if let occurrenceID = alarms[index].wakeOccurrenceID {
+                updateOccurrence(id: occurrenceID, outcome: .expired, stoppedAt: alarms[index].wakeStoppedAt ?? now)
+            }
+            changed = true
+        }
+        if changed { persistAlarmsAfterUserChange() }
+    }
+
+    func recentOccurrences(limit: Int = 20) -> [AlarmOccurrence] {
+        Array(occurrences.sorted { $0.scheduledDate > $1.scheduledDate }.prefix(limit))
+    }
+
+    private func updateOccurrence(id: UUID, outcome: AlarmOccurrenceOutcome,
+                                 stoppedAt: Date? = nil, confirmedAt: Date? = nil,
+                                 failureReason: String? = nil) {
+        guard let index = occurrences.firstIndex(where: { $0.id == id }) else { return }
+        occurrences[index].outcome = outcome
+        occurrences[index].stoppedAt = stoppedAt ?? occurrences[index].stoppedAt
+        occurrences[index].confirmedAt = confirmedAt ?? occurrences[index].confirmedAt
+        if let failureReason { occurrences[index].failureReason = failureReason }
+        persistOccurrencesAfterUserChange()
     }
 
     /// The soonest enabled alarm and its fire date.
@@ -323,6 +441,19 @@ final class AlarmStore: ObservableObject {
                 }
             } else {
                 bestDate = d
+                bestAlarm = alarm
+            }
+        }
+        // A confirmation deadline is also a scheduler deadline. This lets the
+        // engine mark an unconfirmed one-shot alarm as expired even when there
+        // is no future calendar occurrence to wake the timer.
+        for alarm in alarms {
+            guard alarm.wakeConfirmationState == .pending
+                    || alarm.wakeConfirmationState == .stoppedWithoutConfirmation,
+                  let deadline = alarm.wakeConfirmationDeadline,
+                  deadline > now else { continue }
+            if bestDate == nil || deadline < bestDate! {
+                bestDate = deadline
                 bestAlarm = alarm
             }
         }
@@ -482,6 +613,11 @@ final class AlarmStore: ObservableObject {
     private func persistImportedAudiosAfterUserChange() {
         importedAudiosNeedRepair = false
         _ = storage.save(importedAudios, to: storage.importedAudiosURL)
+    }
+
+    private func persistOccurrencesAfterUserChange() {
+        occurrencesNeedRepair = false
+        _ = storage.save(occurrences, to: storage.occurrencesURL)
     }
 
     private func isPlayableAudio(url: URL) -> Bool {

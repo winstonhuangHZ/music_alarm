@@ -13,6 +13,8 @@ Music Alarm 是一个面向 macOS 的本地音乐闹钟。当前版本的核心�
 - 共享的闹钟与音乐库数据存储
 - 共享 JSON 的原子写入和最近一次有效备份恢复
 - 基于 occurrence 的调度、睡眠恢复和近期错过闹钟补偿
+- 记录每次闹钟 occurrence 的开始、停止、确认、贪睡、失败和过期结果
+- 在设置中查看最近历史、系统时间、时区、夏令时和调度 deadline 诊断
 - 同一时刻多个闹钟排队播放
 - 可选的“我已经真正起床”确认状态
 - 可配置渐入、目标音量、最大播放时长和播放列表循环
@@ -36,6 +38,8 @@ Music Alarm 是一个面向 macOS 的本地音乐闹钟。当前版本的核心�
 ├── alarms.json.bak
 ├── imported-audios.json
 ├── imported-audios.json.bak
+├── occurrences.json
+├── occurrences.json.bak
 └── Audio/
 ```
 
