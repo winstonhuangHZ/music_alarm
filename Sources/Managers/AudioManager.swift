@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 import AppKit
 import Combine
+import MediaPlayer
 
 /// Audio playback engine built on AVAudioPlayer (perfect .m4a / .mp3 decoding).
 final class AudioManager: NSObject, ObservableObject {
@@ -43,6 +44,7 @@ final class AudioManager: NSObject, ObservableObject {
         nowPlayingName = name
         isPlaying = true
         startProgressUpdates()
+        updateNowPlayingInfo()
     }
 
     // MARK: - Alarm ringing
@@ -68,6 +70,7 @@ final class AudioManager: NSObject, ObservableObject {
         nowPlayingName = name
         isPlaying = true
         startProgressUpdates()
+        updateNowPlayingInfo()
         if fadeDuration > 0 {
             startFade(to: safeTargetVolume, duration: fadeDuration)
         }
@@ -91,6 +94,7 @@ final class AudioManager: NSObject, ObservableObject {
         isPlaying = true
         nowPlayingName = L("System fallback sound")
         fallbackSound = sound
+        updateNowPlayingInfo()
         return true
     }
 
@@ -137,7 +141,25 @@ final class AudioManager: NSObject, ObservableObject {
             self.playbackProgress = player.duration > 0
                 ? min(max(player.currentTime / player.duration, 0), 1)
                 : 0
+            self.updateNowPlayingInfo()
         }
+    }
+
+    private func updateNowPlayingInfo() {
+        guard isPlaying else {
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+            return
+        }
+        var info: [String: Any] = [
+            MPMediaItemPropertyTitle: nowPlayingName ?? L("Music Alarm"),
+            MPMediaItemPropertyArtist: L("Music Alarm"),
+            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? 1.0 : 0.0,
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: player?.currentTime ?? 0.0,
+        ]
+        if let player, player.duration > 0 {
+            info[MPMediaItemPropertyPlaybackDuration] = player.duration
+        }
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
     func stop() {
@@ -155,6 +177,7 @@ final class AudioManager: NSObject, ObservableObject {
         playbackProgress = 0
         playbackDuration = 0
         isRinging = false
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 }
 
@@ -177,6 +200,7 @@ extension AudioManager: AVAudioPlayerDelegate {
             self.progressTimer = nil
             self.playbackProgress = 1
             self.playbackDuration = player.duration
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
 
             if wasRinging {
                 self.onTrackFinished?()

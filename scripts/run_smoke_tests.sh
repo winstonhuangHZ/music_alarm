@@ -17,6 +17,7 @@ swiftc -O -swift-version 5 \
   -framework SwiftUI -framework AppKit -framework AVFoundation \
   -framework CoreAudio \
   -framework CryptoKit -framework Combine \
+  -framework MediaPlayer -framework UserNotifications -framework Carbon -framework AppIntents \
   -o "$TEST_BINARY" "${SWIFT_FILES[@]}" Tests/SharedAlarmStorageSmoke.swift
 "$TEST_BINARY"
 

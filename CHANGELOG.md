@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.25.0 - unreleased
+
+### macOS integrations
+
+- Added native notification actions for Stop and Snooze, with a conditional wake-up confirmation action and stale-notification protection.
+- Added an optional Command-Option-M global shortcut, Dock menu actions, and Test Alarm / pause / resume actions in the menu bar.
+- Added Shortcuts intents for opening Music Alarm and starting a non-persistent Test Alarm on macOS 13 and later.
+- Published current local playback metadata through macOS Now Playing.
+- Added a localized diagnostic report export with app build metadata and a home-directory-neutral shared-storage path.
+- Added the shortcut and diagnostics controls to Settings and completed their seven-language translations.
+
 ## 2.24.0 - unreleased
 
 ### Wake confirmation feedback

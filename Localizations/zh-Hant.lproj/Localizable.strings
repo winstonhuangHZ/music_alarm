@@ -266,3 +266,10 @@
 /* Expanded local audio format support */
 "No music imported. Click “Import Music” to add a supported local audio file." = "尚未匯入音樂。點擊「匯入音樂」加入支援的本機音訊檔案。";
 "Select a supported local audio file" = "選擇支援的本機音訊檔案";
+
+/* macOS integrations */
+"Enable global shortcut Command-Option-M" = "啟用全域快速鍵 Command-Option-M";
+"Diagnostics" = "診斷";
+"Export diagnostic report" = "匯出診斷報告";
+"Diagnostic report exported to %@" = "診斷報告已匯出至 %@";
+"Snooze" = "貪睡";

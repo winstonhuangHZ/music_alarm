@@ -261,3 +261,10 @@
 "Volume" = "音量";
 "Wake-up confirmed" = "已确认起床";
 "Playback progress" = "播放进度";
+
+/* macOS integrations */
+"Enable global shortcut Command-Option-M" = "启用全局快捷键 Command-Option-M";
+"Diagnostics" = "诊断";
+"Export diagnostic report" = "导出诊断报告";
+"Diagnostic report exported to %@" = "诊断报告已导出到 %@";
+"Snooze" = "贪睡";

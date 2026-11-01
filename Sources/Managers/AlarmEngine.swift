@@ -161,6 +161,9 @@ final class AlarmEngine: ObservableObject {
             onStop: { [weak self] _ in self?.stopRinging() },
             onConfirmWake: { [weak self] _ in self?.confirmWake() }
         )
+        if !candidate.isTest {
+            AlarmNotificationManager.shared.notify(alarm: alarm)
+        }
     }
 
     /// Plays the current track. Failed tracks are skipped before falling back
@@ -304,6 +307,7 @@ final class AlarmEngine: ObservableObject {
     func stopRinging() {
         if let alarm = ringingAlarm, currentCandidate?.isTest != true {
             store.stopAlarm(alarm)
+            AlarmNotificationManager.shared.remove(alarm: alarm)
         }
         audioManager.stop()
         finishCurrent()
@@ -313,6 +317,7 @@ final class AlarmEngine: ObservableObject {
         guard let alarm = ringingAlarm else { return }
         if currentCandidate?.isTest != true {
             store.snooze(alarm, minutes: alarm.snoozeMinutes)
+            AlarmNotificationManager.shared.remove(alarm: alarm)
         }
         audioManager.stop()
         finishCurrent()
@@ -322,6 +327,7 @@ final class AlarmEngine: ObservableObject {
         guard let alarm = ringingAlarm else { return }
         if currentCandidate?.isTest != true {
             store.confirmWake(id: alarm.id)
+            AlarmNotificationManager.shared.remove(alarm: alarm)
         }
         audioManager.stop()
         finishCurrent()
@@ -333,6 +339,9 @@ final class AlarmEngine: ObservableObject {
         isRinging = false
         ringingAlarm = nil
         if let candidate = currentCandidate {
+            if !candidate.isTest {
+                AlarmNotificationManager.shared.remove(alarm: candidate.alarm)
+            }
             claimedAlarmIDs.remove(candidate.alarm.id)
         }
         currentOccurrenceID = nil

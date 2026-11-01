@@ -266,3 +266,10 @@
 /* Expanded local audio format support */
 "No music imported. Click “Import Music” to add a supported local audio file." = "No music imported. Click “Import Music” to add a supported local audio file.";
 "Select a supported local audio file" = "Select a supported local audio file";
+
+/* macOS integrations */
+"Enable global shortcut Command-Option-M" = "تفعيل الاختصار العام Command-Option-M";
+"Diagnostics" = "التشخيص";
+"Export diagnostic report" = "تصدير تقرير التشخيص";
+"Diagnostic report exported to %@" = "تم تصدير تقرير التشخيص إلى %@";
+"Snooze" = "غفوة";

@@ -266,3 +266,10 @@
 /* Expanded local audio format support */
 "No music imported. Click “Import Music” to add a supported local audio file." = "No music imported. Click “Import Music” to add a supported local audio file.";
 "Select a supported local audio file" = "Select a supported local audio file";
+
+/* macOS integrations */
+"Enable global shortcut Command-Option-M" = "Включить глобальное сочетание клавиш Command-Option-M";
+"Diagnostics" = "Диагностика";
+"Export diagnostic report" = "Экспортировать отчет диагностики";
+"Diagnostic report exported to %@" = "Отчет диагностики сохранен: %@";
+"Snooze" = "Отложить";
