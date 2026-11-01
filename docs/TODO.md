@@ -9,6 +9,7 @@ are removed after their version is committed and pushed.
 移动到对应版本的 Completed 小节。
 
 - 增加“闹钟可靠性检查”页面：在睡前检查闹钟状态、音频可播放性、输出设备、系统音量、fallback、调度时间和后台运行条件，并提供可读的检查结果。
+- 升级音乐播放体验：支持更自然的歌曲衔接、播放进度和时长信息、随机与单曲循环、损坏音频跳过，以及更完整的本地音频格式支持。
 
 ## Completed in 2.21.1
 
