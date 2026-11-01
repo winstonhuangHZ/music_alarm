@@ -172,3 +172,8 @@
 "Fallback sound could not start: %@" = "Fallback sound could not start: %@";
 "File missing: %@" = "File missing: %@";
 "Audio failed: %@" = "Audio failed: %@";
+"Replace current data" = "Replace current data";
+"Merge with current data" = "Merge with current data";
+"%@ alarms, %@ audio items, %@ history records, %@ missing audio files" = "%@ alarms, %@ audio items, %@ history records, %@ missing audio files";
+"Conflict handling" = "Conflict handling";
+"A merge keeps current records and lets backup records with the same ID replace them." = "A merge keeps current records and lets backup records with the same ID replace them.";

@@ -7,6 +7,8 @@ struct SettingsView: View {
     @State private var backupMessage = ""
     @State private var pendingImportURL: URL?
     @State private var showImportConfirmation = false
+    @State private var backupPreview: BackupPreview?
+    @State private var restorePolicy: BackupConflictPolicy = .replace
 
     var body: some View {
         Form {
@@ -105,8 +107,13 @@ struct SettingsView: View {
                         panel.canChooseDirectories = true
                         panel.allowsMultipleSelection = false
                         if panel.runModal() == .OK, let url = panel.url {
-                            pendingImportURL = url
-                            showImportConfirmation = true
+                            do {
+                                backupPreview = try BackupManager.preview(from: url)
+                                pendingImportURL = url
+                                showImportConfirmation = true
+                            } catch {
+                                backupMessage = error.localizedDescription
+                            }
                         }
                     }
                 }
@@ -123,19 +130,43 @@ struct SettingsView: View {
         }
         .padding(20)
         .frame(width: 430, height: 560)
-        .alert(isPresented: $showImportConfirmation) {
-            Alert(title: Text(L("Restore backup?")),
-                  message: Text(L("The current shared alarms and audio library will be replaced.")),
-                  primaryButton: .destructive(Text(L("Restore"))) {
+        .sheet(isPresented: $showImportConfirmation) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text(L("Restore backup?"))
+                    .font(.headline)
+                if let backupPreview {
+                    Text(backupPreview.summary)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Picker(L("Conflict handling"), selection: $restorePolicy) {
+                    ForEach(BackupConflictPolicy.allCases) { policy in
+                        Text(policy.title).tag(policy)
+                    }
+                }
+                Text(L("A merge keeps current records and lets backup records with the same ID replace them."))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                HStack {
+                    Spacer()
+                    Button(L("Cancel")) { showImportConfirmation = false }
+                    Button(L("Restore")) {
                       guard let pendingImportURL else { return }
                       do {
-                          try BackupManager.importBackup(from: pendingImportURL, into: store)
+                          try BackupManager.importBackup(from: pendingImportURL,
+                                                         into: store,
+                                                         conflictPolicy: restorePolicy)
                           backupMessage = L("Backup restored")
+                          showImportConfirmation = false
                       } catch {
                           backupMessage = error.localizedDescription
                       }
-                  },
-                  secondaryButton: .cancel())
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+            }
+            .padding(20)
+            .frame(width: 420)
         }
     }
 

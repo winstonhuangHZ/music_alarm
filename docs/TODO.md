@@ -5,7 +5,6 @@ are removed after their version is committed and pushed.
 
 ## Remaining
 
-- [ ] Add restore preview and conflict handling for backups.
 - [ ] Add orphaned-audio cleanup and content-hash duplicate detection.
 - [ ] Add reliability diagnostics, accessibility coverage, and UI automation tests.
 - [ ] Update release documentation after signing and notarization are configured.
@@ -50,6 +49,11 @@ are removed after their version is committed and pushed.
 
 - Added selectable system fallback sounds.
 - Added detailed local-track and fallback failure reasons to occurrence history.
+
+## Completed in 2.15.0
+
+- Added restore preview with validated counts and missing-audio information.
+- Added explicit replace or merge conflict handling for backup restoration.
 
 ## Completed in 2.10.0
 

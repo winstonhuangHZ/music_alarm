@@ -45,6 +45,27 @@ enum BackupError: LocalizedError {
     }
 }
 
+enum BackupConflictPolicy: String, CaseIterable, Identifiable {
+    case replace
+    case merge
+
+    var id: String { rawValue }
+    var title: String { self == .replace ? L("Replace current data") : L("Merge with current data") }
+}
+
+struct BackupPreview {
+    let manifest: MusicAlarmBackupManifest
+    let alarmCount: Int
+    let audioCount: Int
+    let occurrenceCount: Int
+    let missingAudioCount: Int
+
+    var summary: String {
+        String(format: L("%@ alarms, %@ audio items, %@ history records, %@ missing audio files"),
+               "\(alarmCount)", "\(audioCount)", "\(occurrenceCount)", "\(missingAudioCount)")
+    }
+}
+
 /// Exports and restores a complete user-readable backup directory. Audio paths
 /// inside the backup are relative, so the backup can be restored after the app
 /// is moved or the shared Application Support path changes.
@@ -68,8 +89,20 @@ enum BackupManager {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let folder = panel.url else { throw BackupError.cancelled }
-        try importBackup(from: folder, into: store)
+        try importBackup(from: folder, into: store, conflictPolicy: .replace)
         return folder
+    }
+
+    static func preview(from folder: URL) throws -> BackupPreview {
+        let contents = try loadContents(from: folder)
+        let missingAudioCount = contents.audios.filter {
+            !FileManager.default.fileExists(atPath: folder.appendingPathComponent($0.urlString).path)
+        }.count
+        return BackupPreview(manifest: contents.manifest,
+                             alarmCount: contents.alarms.count,
+                             audioCount: contents.audios.count,
+                             occurrenceCount: contents.occurrences.count,
+                             missingAudioCount: missingAudioCount)
     }
 
     static func export(store: AlarmStore, to parent: URL) throws -> URL {
@@ -137,32 +170,13 @@ enum BackupManager {
         return folder
     }
 
-    static func importBackup(from folder: URL, into store: AlarmStore) throws {
+    static func importBackup(from folder: URL, into store: AlarmStore,
+                             conflictPolicy: BackupConflictPolicy = .replace) throws {
+        let contents = try loadContents(from: folder)
+        let backupAlarms = contents.alarms
+        let backupAudios = contents.audios
+        let backupOccurrences = contents.occurrences
         let fm = FileManager.default
-        let manifestURL = folder.appendingPathComponent("manifest.json")
-        let alarmsURL = folder.appendingPathComponent("alarms.json")
-        let audiosURL = folder.appendingPathComponent("imported-audios.json")
-        guard fm.fileExists(atPath: manifestURL.path),
-              fm.fileExists(atPath: alarmsURL.path),
-              fm.fileExists(atPath: audiosURL.path) else {
-            throw BackupError.invalidBackup(L("Required backup files are missing"))
-        }
-        let manifest = try read(MusicAlarmBackupManifest.self, from: manifestURL)
-        guard manifest.formatVersion == 1 || manifest.formatVersion == 2 else {
-            throw BackupError.invalidBackup(L("Unsupported backup format"))
-        }
-        let backupAlarms = try read([AlarmItem].self, from: alarmsURL)
-        let backupAudios = try read([ImportedAudio].self, from: audiosURL)
-        let backupOccurrences: [AlarmOccurrence]
-        let occurrencesURL = folder.appendingPathComponent("occurrences.json")
-        if manifest.formatVersion >= 2 {
-            guard fm.fileExists(atPath: occurrencesURL.path) else {
-                throw BackupError.invalidBackup(L("Occurrence history is missing"))
-            }
-            backupOccurrences = try read([AlarmOccurrence].self, from: occurrencesURL)
-        } else {
-            backupOccurrences = []
-        }
         let storage = store.sharedStorage
         var pathMap: [UUID: String] = [:]
         var restoredAudios: [ImportedAudio] = []
@@ -202,9 +216,65 @@ enum BackupManager {
             restoredAlarms[alarmIndex].audioNeedsSelection = restoredAlarms[alarmIndex].tracks.isEmpty
                 || !restoredAlarms[alarmIndex].tracks.contains(where: \.isPlayable)
         }
-        store.replaceDataFromBackup(alarms: restoredAlarms,
-                                    importedAudios: restoredAudios,
-                                    occurrences: backupOccurrences)
+        switch conflictPolicy {
+        case .replace:
+            store.replaceDataFromBackup(alarms: restoredAlarms,
+                                        importedAudios: restoredAudios,
+                                        occurrences: backupOccurrences)
+        case .merge:
+            var alarmMap = Dictionary(uniqueKeysWithValues: store.alarms.map { ($0.id, $0) })
+            restoredAlarms.forEach { alarmMap[$0.id] = $0 }
+            var audioMap = Dictionary(uniqueKeysWithValues: store.importedAudios.map { ($0.id, $0) })
+            restoredAudios.forEach { audioMap[$0.id] = $0 }
+            var occurrenceMap = Dictionary(uniqueKeysWithValues: store.occurrences.map { ($0.id, $0) })
+            backupOccurrences.forEach { occurrenceMap[$0.id] = $0 }
+            store.replaceDataFromBackup(alarms: Array(alarmMap.values),
+                                        importedAudios: Array(audioMap.values),
+                                        occurrences: Array(occurrenceMap.values).sorted { $0.scheduledDate < $1.scheduledDate })
+        }
+    }
+
+    private struct BackupContents {
+        let manifest: MusicAlarmBackupManifest
+        let alarms: [AlarmItem]
+        let audios: [ImportedAudio]
+        let occurrences: [AlarmOccurrence]
+    }
+
+    private static func loadContents(from folder: URL) throws -> BackupContents {
+        let fm = FileManager.default
+        let manifestURL = folder.appendingPathComponent("manifest.json")
+        let alarmsURL = folder.appendingPathComponent("alarms.json")
+        let audiosURL = folder.appendingPathComponent("imported-audios.json")
+        guard fm.fileExists(atPath: manifestURL.path),
+              fm.fileExists(atPath: alarmsURL.path),
+              fm.fileExists(atPath: audiosURL.path) else {
+            throw BackupError.invalidBackup(L("Required backup files are missing"))
+        }
+        let manifest = try read(MusicAlarmBackupManifest.self, from: manifestURL)
+        guard manifest.formatVersion == 1 || manifest.formatVersion == 2 else {
+            throw BackupError.invalidBackup(L("Unsupported backup format"))
+        }
+        let alarms = try read([AlarmItem].self, from: alarmsURL)
+        let audios = try read([ImportedAudio].self, from: audiosURL)
+        let occurrencesURL = folder.appendingPathComponent("occurrences.json")
+        let occurrences: [AlarmOccurrence]
+        if manifest.formatVersion >= 2 {
+            guard fm.fileExists(atPath: occurrencesURL.path) else {
+                throw BackupError.invalidBackup(L("Occurrence history is missing"))
+            }
+            occurrences = try read([AlarmOccurrence].self, from: occurrencesURL)
+        } else {
+            occurrences = []
+        }
+        for audio in audios {
+            let source = folder.appendingPathComponent(audio.urlString)
+            guard isContained(source, in: folder) else {
+                throw BackupError.invalidBackup(L("An audio path escapes the backup folder"))
+            }
+        }
+        return BackupContents(manifest: manifest, alarms: alarms,
+                              audios: audios, occurrences: occurrences)
     }
 
     private static func write<T: Encodable>(_ value: T, to url: URL) throws {

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.15.0 - unreleased
+
+### Backup preview and conflict handling
+
+- Added pre-restore validation and a backup summary showing alarm, audio, history, and missing-file counts.
+- Added replace-current-data and merge-with-current-data restore policies.
+- Kept format 1 backups readable and restored them with empty occurrence history.
+
 ## 2.14.0 - unreleased
 
 ### Fallback and playback diagnostics
