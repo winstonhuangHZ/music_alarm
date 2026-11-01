@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.19.1 - unreleased
+
+### Localization polish
+
+- Translated audio-library maintenance labels and diagnostic/history labels across the seven localization bundles.
+- Removed the remaining English fallback text from the new library panel and the most visible Settings sections.
+
 ## 2.19.0 - unreleased
 
 ### Localization and library navigation
