@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.9.0 - unreleased
+
+### Scheduling and audio state
+
+- Added a true calendar date for one-time alarms.
+- Added custom weekday repetition and alarm labels.
+- Added missed-alarm policies: never, 15 minutes, 1 hour, 2 hours, and wake-only.
+- Added an option to keep imported audio at its original location instead of copying it into the shared library.
+- Added missing versus undecodable audio status in the editor.
+- Recompute `audioNeedsSelection` from the actual playable track list when saving.
+- Replacing managed audio now removes stale files from previous extensions.
+
 ## 2.8.0 - unreleased
 
 ### Application lifecycle

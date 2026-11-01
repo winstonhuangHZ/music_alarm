@@ -1,4 +1,19 @@
 import Foundation
+import AVFoundation
+
+enum AudioAvailability {
+    case playable
+    case missing
+    case undecodable
+
+    var title: String {
+        switch self {
+        case .playable: return L("Playable")
+        case .missing: return L("File missing")
+        case .undecodable: return L("File cannot be decoded")
+        }
+    }
+}
 
 /// A local track in an alarm playlist. `unavailable` is only a migration
 /// placeholder for records created by older builds.
@@ -22,9 +37,21 @@ enum AudioTrack: Identifiable, Codable, Equatable {
 
     var isPlayable: Bool {
         switch self {
-        case .local(_, let path, _):
-            return FileManager.default.fileExists(atPath: path)
+        case .local:
+            return availability == .playable
         case .unavailable: return false
+        }
+    }
+
+    var availability: AudioAvailability {
+        switch self {
+        case .local(_, let path, _):
+            guard FileManager.default.fileExists(atPath: path) else { return .missing }
+            guard let player = try? AVAudioPlayer(contentsOf: URL(fileURLWithPath: path)),
+                  player.duration > 0 else { return .undecodable }
+            return .playable
+        case .unavailable:
+            return .missing
         }
     }
 

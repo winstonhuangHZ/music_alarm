@@ -22,17 +22,29 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(showMenuBarItem, forKey: Keys.showMenuBarItem) }
     }
 
+    @Published var copyImportedAudioToLibrary: Bool {
+        didSet { UserDefaults.standard.set(copyImportedAudioToLibrary, forKey: Keys.copyImportedAudio) }
+    }
+
+    @Published var missedAlarmPolicy: MissedAlarmPolicy {
+        didSet { UserDefaults.standard.set(missedAlarmPolicy.rawValue, forKey: Keys.missedAlarmPolicy) }
+    }
+
     @Published private(set) var launchAtLoginError: String?
 
     private enum Keys {
         static let hideOnLaunch = "MusicAlarm.hideMainWindowOnLaunch.v1"
         static let showMenuBarItem = "MusicAlarm.showMenuBarItem.v1"
         static let launchAtLogin = "MusicAlarm.launchAtLogin.v1"
+        static let copyImportedAudio = "MusicAlarm.copyImportedAudio.v1"
+        static let missedAlarmPolicy = "MusicAlarm.missedAlarmPolicy.v1"
     }
 
     private init() {
         hideMainWindowOnLaunch = UserDefaults.standard.bool(forKey: Keys.hideOnLaunch)
         showMenuBarItem = UserDefaults.standard.object(forKey: Keys.showMenuBarItem) as? Bool ?? true
+        copyImportedAudioToLibrary = UserDefaults.standard.object(forKey: Keys.copyImportedAudio) as? Bool ?? true
+        missedAlarmPolicy = MissedAlarmPolicy(rawValue: UserDefaults.standard.string(forKey: Keys.missedAlarmPolicy) ?? "") ?? .twoHours
 
         if #available(macOS 13.0, *) {
             launchAtLogin = SMAppService.mainApp.status == .enabled

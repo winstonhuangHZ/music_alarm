@@ -14,6 +14,11 @@ struct AlarmRowView: View {
     var body: some View {
         HStack(spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
+                if !alarm.label.isEmpty {
+                    Text(alarm.label)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
                 Text(alarm.timeString)
                     .font(.system(size: 30, weight: .semibold, design: .rounded))
                     .foregroundColor(alarm.isEnabled ? Color.primary : Color.secondary)
@@ -126,6 +131,7 @@ struct AlarmRowView: View {
         case .once: return "①"
         case .daily: return "↻"
         case .weekdays: return "⑤"
+        case .custom: return "⑦"
         }
     }
 

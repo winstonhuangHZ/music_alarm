@@ -3,6 +3,26 @@ import Foundation
 /// Allowed audio file extensions for import (.mp3 / .m4a only).
 let musicFileTypes: [String] = ["mp3", "m4a"]
 
+enum MissedAlarmPolicy: String, CaseIterable, Identifiable {
+    case never = "Never"
+    case fifteenMinutes = "15 minutes"
+    case oneHour = "1 hour"
+    case twoHours = "2 hours"
+    case wakeOnly = "On wake only"
+
+    var id: String { rawValue }
+    var title: String { L(rawValue) }
+
+    var catchUpWindow: TimeInterval? {
+        switch self {
+        case .never: return nil
+        case .fifteenMinutes: return 15 * 60
+        case .oneHour: return 60 * 60
+        case .twoHours, .wakeOnly: return 2 * 60 * 60
+        }
+    }
+}
+
 /// Shared date / fire-key helpers used by the alarm engine and store.
 enum AlarmTimeUtil {
     static let fireFormatter: DateFormatter = {

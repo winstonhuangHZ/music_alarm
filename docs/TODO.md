@@ -5,11 +5,7 @@ are removed after their version is committed and pushed.
 
 ## Remaining
 
-- [ ] Add `scheduledDate` for true one-time calendar dates.
-- [ ] Add custom weekday selection, alarm labels, skip-next, and configurable snooze.
-- [ ] Add missed-alarm policies: never, 15 minutes, 1 hour, 2 hours, and wake-only.
-- [ ] Add configurable local audio library copy behavior and portable relative paths.
-- [ ] Recompute `audioNeedsSelection` from actual playable tracks and expose missing/decode states.
+- [ ] Add skip-next and configurable snooze.
 - [ ] Add playback settings: fade, target volume, maximum duration, playlist behavior, and fallback choice.
 - [ ] Add a test alarm flow with playback, popup, stop, snooze, confirm, and fallback diagnostics.
 - [ ] Move wake confirmation into settings and add confirmation deadline/time records.
@@ -27,3 +23,12 @@ are removed after their version is committed and pushed.
 - Optional login launch.
 - Optional hidden main window on launch.
 - Optional menu bar item and settings window.
+
+## Completed in 2.9.0
+
+- True one-time calendar date with `scheduledDate`.
+- Custom weekday selection and alarm labels.
+- Configurable missed-alarm policy, including wake-only recovery.
+- Optional copying of imported audio into the shared Music Alarm library.
+- Actual missing and undecodable audio states in the alarm editor.
+- `audioNeedsSelection` is recalculated from playable tracks when saving.

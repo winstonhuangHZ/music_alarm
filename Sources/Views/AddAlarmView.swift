@@ -10,6 +10,9 @@ struct AddAlarmView: View {
 
     @State private var selectedTime: Date
     @State private var repeatType: RepeatType = .once
+    @State private var label = ""
+    @State private var scheduledDate: Date
+    @State private var selectedWeekdays: Set<Int> = []
 
     /// The editable local track list for this alarm.
     @State private var tracks: [AudioTrack] = []
@@ -29,13 +32,17 @@ struct AddAlarmView: View {
             comps.minute = alarm.minute
             _selectedTime = State(initialValue: cal.date(from: comps) ?? now)
             _repeatType = State(initialValue: alarm.repeatType)
+            _label = State(initialValue: alarm.label)
+            _scheduledDate = State(initialValue: alarm.scheduledDate ?? cal.date(from: comps) ?? now)
+            _selectedWeekdays = State(initialValue: alarm.weekdays)
             _tracks = State(initialValue: alarm.tracks)
-            _audioNeedsSelection = State(initialValue: alarm.audioNeedsSelection)
+            _audioNeedsSelection = State(initialValue: alarm.tracks.isEmpty || !alarm.tracks.contains(where: \.isPlayable))
             _requiresWakeConfirmation = State(initialValue: alarm.requiresWakeConfirmation)
         } else {
             comps.hour = 7
             comps.minute = 0
             _selectedTime = State(initialValue: cal.date(from: comps) ?? now)
+            _scheduledDate = State(initialValue: cal.date(from: comps) ?? now)
         }
     }
 
@@ -44,11 +51,17 @@ struct AddAlarmView: View {
             Text(editingAlarm == nil ? L("Add Alarm") : L("Edit Alarm"))
                 .font(.system(size: 26, weight: .bold))
 
-            HStack(spacing: 16) {
-                DatePicker(L("Time"), selection: $selectedTime, displayedComponents: .hourAndMinute)
-                    .labelsHidden()
-                Spacer()
+            if repeatType == .once {
+                DatePicker(L("Date and time"), selection: $scheduledDate, displayedComponents: [.date, .hourAndMinute])
+            } else {
+                HStack(spacing: 16) {
+                    DatePicker(L("Time"), selection: $selectedTime, displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                    Spacer()
+                }
             }
+
+            TextField(L("Label"), text: $label)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(L("Repeat"))
@@ -59,6 +72,9 @@ struct AddAlarmView: View {
                     }
                 }
                 .pickerStyle(SegmentedPickerStyle())
+                if repeatType == .custom {
+                    weekdayPicker
+                }
             }
 
             VStack(alignment: .leading, spacing: 5) {
@@ -88,7 +104,7 @@ struct AddAlarmView: View {
                         .cornerRadius(7)
                 }
                 .buttonStyle(PlainButtonStyle())
-                .disabled(self.tracks.isEmpty)
+                .disabled(self.tracks.isEmpty || (repeatType == .custom && selectedWeekdays.isEmpty))
             }
         }
         .padding(24)
@@ -148,7 +164,25 @@ struct AddAlarmView: View {
             Text(track.displayName)
                 .font(.caption)
                 .lineLimit(1)
+            Text(track.availability.title)
+                .font(.caption2)
+                .foregroundColor(track.isPlayable ? .green : .orange)
             Spacer()
+            if !track.isPlayable {
+                Menu {
+                    Button(L("Replace Audio")) { self.replaceTrackFromFile(at: idx) }
+                    if !store.importedAudios.isEmpty {
+                        Menu(L("Choose from music library")) {
+                            ForEach(store.importedAudios) { audio in
+                                Button(audio.name) { self.replaceTrack(at: idx, with: audio) }
+                            }
+                        }
+                    }
+                } label: {
+                    Text(L("Repair"))
+                        .font(.caption2)
+                }
+            }
             if idx > 0 {
                 Button(action: { self.moveTrackUp(idx) }) {
                     Text("▲").font(.system(size: 12))
@@ -227,11 +261,10 @@ struct AddAlarmView: View {
                             .frame(width: 16)
                         Text(audio.name)
                             .lineLimit(1)
-                        if !audio.fileExists {
-                            Text(L("Missing"))
-                                .font(.caption2)
-                                .foregroundColor(.orange)
-                        }
+                        let track = AudioTrack.local(name: audio.name, path: audio.urlString, audioID: audio.id)
+                        Text(track.availability.title)
+                            .font(.caption2)
+                            .foregroundColor(track.isPlayable ? .green : .orange)
                         Spacer()
                     }
                     .padding(.horizontal, 12)
@@ -258,12 +291,53 @@ struct AddAlarmView: View {
               let audio = store.importedAudios.first(where: { $0.id == id }) else { return }
         tracks.append(.local(name: audio.name, path: audio.urlString, audioID: audio.id))
         selectedAudioID = nil
+        audioNeedsSelection = tracks.isEmpty || !tracks.contains(where: \.isPlayable)
+    }
+
+    private var weekdayPicker: some View {
+        HStack(spacing: 4) {
+            ForEach(1...7, id: \.self) { weekday in
+                Button(calendarWeekdayTitle(weekday)) {
+                    if selectedWeekdays.contains(weekday) {
+                        selectedWeekdays.remove(weekday)
+                    } else {
+                        selectedWeekdays.insert(weekday)
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .background(selectedWeekdays.contains(weekday) ? Color.accentColor : Color.secondary.opacity(0.15))
+                .foregroundColor(selectedWeekdays.contains(weekday) ? .white : .primary)
+                .cornerRadius(5)
+            }
+        }
+    }
+
+    private func calendarWeekdayTitle(_ weekday: Int) -> String {
+        let symbols = Calendar.current.veryShortWeekdaySymbols
+        return symbols.indices.contains(weekday - 1) ? symbols[weekday - 1] : "?"
+    }
+
+    private func replaceTrack(at index: Int, with audio: ImportedAudio) {
+        guard tracks.indices.contains(index) else { return }
+        tracks[index] = .local(name: audio.name, path: audio.urlString, audioID: audio.id)
+        audioNeedsSelection = tracks.isEmpty || !tracks.contains(where: \.isPlayable)
+    }
+
+    private func replaceTrackFromFile(at index: Int) {
+        guard tracks.indices.contains(index),
+              case .local(_, _, let audioID) = tracks[index] else { return }
+        if let replaced = store.replaceAudio(id: audioID) {
+            replaceTrack(at: index, with: replaced)
+        }
     }
 
     // MARK: - Track list manipulation
 
     private func removeTrack(at index: Int) {
         tracks.remove(at: index)
+        audioNeedsSelection = tracks.isEmpty || !tracks.contains(where: \.isPlayable)
     }
 
     private func moveTrackUp(_ index: Int) {
@@ -286,11 +360,15 @@ struct AddAlarmView: View {
             alarm = AlarmItem()
         }
 
-        alarm.hour = Calendar.current.component(.hour, from: selectedTime)
-        alarm.minute = Calendar.current.component(.minute, from: selectedTime)
+        let time = repeatType == .once ? scheduledDate : selectedTime
+        alarm.hour = Calendar.current.component(.hour, from: time)
+        alarm.minute = Calendar.current.component(.minute, from: time)
         alarm.repeatType = repeatType
+        alarm.label = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        alarm.scheduledDate = repeatType == .once ? scheduledDate : nil
+        alarm.weekdays = repeatType == .custom ? selectedWeekdays : []
         alarm.tracks = tracks
-        alarm.audioNeedsSelection = false
+        alarm.audioNeedsSelection = tracks.isEmpty || !tracks.contains(where: \.isPlayable)
         alarm.requiresWakeConfirmation = requiresWakeConfirmation
 
         if editingAlarm != nil {

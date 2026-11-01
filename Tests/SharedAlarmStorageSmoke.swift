@@ -69,6 +69,21 @@ struct SharedAlarmStorageSmoke {
         precondition(libraryStore.alarms[0].tracks.isEmpty)
         precondition(libraryStore.alarms[0].audioNeedsSelection)
 
+        var datedAlarm = AlarmItem()
+        datedAlarm.repeatType = .once
+        datedAlarm.scheduledDate = Calendar.current.date(byAdding: .day, value: 2, to: Date())
+        precondition(datedAlarm.nextFireDate() != nil)
+
+        var customAlarm = AlarmItem()
+        customAlarm.repeatType = .custom
+        customAlarm.weekdays = [2, 4]
+        precondition(customAlarm.nextFireDate() != nil)
+
+        let legacyAudioJSON = "[{\"id\":\"\(UUID().uuidString)\",\"name\":\"Legacy\",\"urlString\":\"/tmp/legacy.m4a\"}]"
+        let legacyAudios = try JSONDecoder().decode([ImportedAudio].self,
+                                                      from: Data(legacyAudioJSON.utf8))
+        precondition(legacyAudios[0].isManagedCopy)
+
         print("shared storage smoke test passed")
     }
 }

@@ -20,7 +20,7 @@
 
 ### `alarms.json`
 
-保存 `[AlarmItem]`。`AlarmItem` 对新字段使用 `decodeIfPresent`，旧版本缺少字段时使用默认值，不会因为新增字段导致整个列表解码失败。
+保存 `[AlarmItem]`。`AlarmItem` 对新字段使用 `decodeIfPresent`，旧版本缺少字段时使用默认值，不会因为新增字段导致整个列表解码失败。一次性闹钟使用 `scheduledDate` 保存完整日期；自定义重复闹钟使用 `weekdays` 保存 Foundation weekday 值。
 
 ### `imported-audios.json`
 
@@ -28,7 +28,9 @@
 
 ### `Audio/<UUID>.<ext>`
 
-导入时将源文件复制到共享目录。闹钟记录引用共享副本，源文件移动后不影响已经导入的音频。
+默认导入时将源文件复制到共享目录，闹钟记录引用共享副本，源文件移动后不影响已经导入的音频。用户可以在设置中关闭复制，此时记录原始绝对路径，原文件移动或删除后会显示失效状态。
+
+`ImportedAudio.isManagedCopy` 区分应用管理的共享副本和用户原始文件。删除音频库项目时只删除应用管理的副本，不会删除用户原始文件。
 
 ## 写入安全
 

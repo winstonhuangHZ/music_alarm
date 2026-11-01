@@ -8,9 +8,27 @@ struct ImportedAudio: Identifiable, Codable, Equatable {
     var id = UUID()
     var name: String
     var urlString: String
+    var isManagedCopy: Bool = true
 
     var url: URL { URL(fileURLWithPath: urlString) }
     var fileExists: Bool { FileManager.default.fileExists(atPath: urlString) }
+
+    private enum CodingKeys: String, CodingKey { case id, name, urlString, isManagedCopy }
+
+    init(id: UUID = UUID(), name: String, urlString: String, isManagedCopy: Bool = true) {
+        self.id = id
+        self.name = name
+        self.urlString = urlString
+        self.isManagedCopy = isManagedCopy
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try c.decode(String.self, forKey: .name)
+        urlString = try c.decode(String.self, forKey: .urlString)
+        isManagedCopy = try c.decodeIfPresent(Bool.self, forKey: .isManagedCopy) ?? true
+    }
 }
 
 /// Central data store: alarms + imported audio library shared across app
@@ -123,6 +141,8 @@ final class AlarmStore: ObservableObject {
         let scheduleChanged = old.hour != alarm.hour
             || old.minute != alarm.minute
             || old.repeatType != alarm.repeatType
+            || old.scheduledDate != alarm.scheduledDate
+            || old.weekdays != alarm.weekdays
         if scheduleChanged {
             updated.snoozeUntil = nil
             updated.lastFiredKey = ""
@@ -208,7 +228,7 @@ final class AlarmStore: ObservableObject {
             if let snooze = alarm.snoozeUntil, snooze <= now {
                 d = now
             } else if let occurrence = alarm.mostRecentOccurrence(at: now),
-                      now.timeIntervalSince(occurrence) <= AlarmTimeUtil.missedAlarmWindow,
+                      isRecentMissedOccurrence(occurrence, now: now),
                       alarm.lastFiredKey != AlarmTimeUtil.fireKey(for: occurrence) {
                 d = now
             } else {
@@ -226,6 +246,14 @@ final class AlarmStore: ObservableObject {
             }
         }
         return (bestAlarm, bestDate)
+    }
+
+    private func isRecentMissedOccurrence(_ occurrence: Date, now: Date) -> Bool {
+        let age = now.timeIntervalSince(occurrence)
+        if age < 0 || age <= 2 { return age >= 0 }
+        let policy = AppSettings.shared.missedAlarmPolicy
+        guard policy != .wakeOnly, let window = policy.catchUpWindow else { return false }
+        return age <= window
     }
 
     // MARK: - Audio library
@@ -261,8 +289,20 @@ final class AlarmStore: ObservableObject {
         }
         let audioID = UUID()
         do {
-            let sharedURL = try storage.copyAudio(from: url, audioID: audioID)
-            let audio = ImportedAudio(id: audioID, name: name, urlString: sharedURL.path)
+            let shouldCopy = AppSettings.shared.copyImportedAudioToLibrary
+            let storedURL: URL
+            let managedCopy: Bool
+            if shouldCopy {
+                storedURL = try storage.copyAudio(from: url, audioID: audioID)
+                managedCopy = true
+            } else {
+                storedURL = url.standardizedFileURL
+                managedCopy = false
+            }
+            let audio = ImportedAudio(id: audioID,
+                                      name: name,
+                                      urlString: storedURL.path,
+                                      isManagedCopy: managedCopy)
             importedAudios.append(audio)
             persistImportedAudiosAfterUserChange()
             return audio
@@ -273,6 +313,7 @@ final class AlarmStore: ObservableObject {
     }
 
     func removeAudio(id: UUID) {
+        let removedAudio = importedAudios.first(where: { $0.id == id })
         importedAudios.removeAll { $0.id == id }
         for index in alarms.indices {
             let originalCount = alarms[index].tracks.count
@@ -284,7 +325,9 @@ final class AlarmStore: ObservableObject {
                 alarms[index].audioNeedsSelection = true
             }
         }
-        storage.removeAudioFile(for: id)
+        if removedAudio?.isManagedCopy == true {
+            storage.removeAudioFile(for: id)
+        }
         persistAlarmsAfterUserChange()
         persistImportedAudiosAfterUserChange()
     }
@@ -304,14 +347,20 @@ final class AlarmStore: ObservableObject {
         guard panel.runModal() == .OK, let sourceURL = panel.url,
               isPlayableAudio(url: sourceURL) else { return nil }
         do {
-            let sharedURL = try storage.replaceAudio(from: sourceURL, audioID: id)
+            let managedCopy = importedAudios[index].isManagedCopy
+            let storedURL: URL
+            if managedCopy {
+                storedURL = try storage.replaceAudio(from: sourceURL, audioID: id)
+            } else {
+                storedURL = sourceURL.standardizedFileURL
+            }
             importedAudios[index].name = sourceURL.deletingPathExtension().lastPathComponent
-            importedAudios[index].urlString = sharedURL.path
+            importedAudios[index].urlString = storedURL.path
             for alarmIndex in alarms.indices {
                 for trackIndex in alarms[alarmIndex].tracks.indices {
                     if case .local(_, _, let audioID) = alarms[alarmIndex].tracks[trackIndex], audioID == id {
                         alarms[alarmIndex].tracks[trackIndex] = .local(name: importedAudios[index].name,
-                                                                       path: sharedURL.path,
+                                                                       path: storedURL.path,
                                                                        audioID: audioID)
                         alarms[alarmIndex].audioNeedsSelection = false
                     }

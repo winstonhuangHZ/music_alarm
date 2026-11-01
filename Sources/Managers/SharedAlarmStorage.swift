@@ -114,8 +114,11 @@ final class SharedAlarmStorage {
         let destination = audioDirectoryURL
             .appendingPathComponent(audioID.uuidString)
             .appendingPathExtension(ext)
-        if fileManager.fileExists(atPath: destination.path) {
-            try fileManager.removeItem(at: destination)
+        if let matches = try? fileManager.contentsOfDirectory(at: audioDirectoryURL,
+                                                               includingPropertiesForKeys: nil) {
+            for match in matches where match.deletingPathExtension().lastPathComponent == audioID.uuidString {
+                try? fileManager.removeItem(at: match)
+            }
         }
         try fileManager.copyItem(at: sourceURL, to: destination)
         return destination
@@ -123,9 +126,10 @@ final class SharedAlarmStorage {
 
     func removeAudioFile(for audioID: UUID) {
         guard let matches = try? fileManager.contentsOfDirectory(at: audioDirectoryURL,
-                                                                  includingPropertiesForKeys: nil),
-              let match = matches.first(where: { $0.deletingPathExtension().lastPathComponent == audioID.uuidString }) else { return }
-        try? fileManager.removeItem(at: match)
+                                                                  includingPropertiesForKeys: nil) else { return }
+        for match in matches where match.deletingPathExtension().lastPathComponent == audioID.uuidString {
+            try? fileManager.removeItem(at: match)
+        }
     }
 
     /// Copies legacy absolute-path audio into shared storage and rewrites

@@ -26,6 +26,8 @@ final class AlarmEngine: ObservableObject {
     private var wakeObserver: NSObjectProtocol?
     private var activeObserver: NSObjectProtocol?
 
+    private enum TickReason { case regular, wake }
+
     init(store: AlarmStore, audioManager: AudioManager) {
         self.store = store
         self.audioManager = audioManager
@@ -34,7 +36,7 @@ final class AlarmEngine: ObservableObject {
     func start() {
         guard timer == nil else { return }
         let t = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.tick()
+            self?.tick(reason: .regular)
         }
         RunLoop.main.add(t, forMode: .common)
         timer = t
@@ -42,13 +44,13 @@ final class AlarmEngine: ObservableObject {
             forName: NSWorkspace.didWakeNotification,
             object: nil,
             queue: .main
-        ) { [weak self] _ in self?.tick() }
+        ) { [weak self] _ in self?.tick(reason: .wake) }
         activeObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification,
             object: nil,
             queue: .main
-        ) { [weak self] _ in self?.tick() }
-        tick()
+        ) { [weak self] _ in self?.tick(reason: .regular) }
+        tick(reason: .regular)
     }
 
     func stop() {
@@ -60,25 +62,35 @@ final class AlarmEngine: ObservableObject {
         activeObserver = nil
     }
 
-    func tick() {
+    private func tick(reason: TickReason = .regular) {
         let now = Date()
         for alarm in store.alarms where alarm.isEnabled {
             guard !claimedAlarmIDs.contains(alarm.id),
-                  let candidate = dueCandidate(for: alarm, now: now) else { continue }
+                  let candidate = dueCandidate(for: alarm, now: now, reason: reason) else { continue }
             claimedAlarmIDs.insert(alarm.id)
             pendingCandidates.append(candidate)
         }
         startNextIfNeeded()
     }
 
-    private func dueCandidate(for alarm: AlarmItem, now: Date) -> FireCandidate? {
+    private func dueCandidate(for alarm: AlarmItem, now: Date, reason: TickReason) -> FireCandidate? {
         if let snooze = alarm.snoozeUntil, snooze <= now {
             return FireCandidate(alarm: alarm, occurrence: snooze, isSnooze: true)
         }
         guard let occurrence = alarm.mostRecentOccurrence(at: now),
-              now.timeIntervalSince(occurrence) <= AlarmTimeUtil.missedAlarmWindow,
+              shouldCatchUp(occurrence: occurrence, now: now, reason: reason),
               alarm.lastFiredKey != AlarmTimeUtil.fireKey(for: occurrence) else { return nil }
         return FireCandidate(alarm: alarm, occurrence: occurrence, isSnooze: false)
+    }
+
+    private func shouldCatchUp(occurrence: Date, now: Date, reason: TickReason) -> Bool {
+        let age = now.timeIntervalSince(occurrence)
+        guard age >= 0 else { return false }
+        if age <= 2 { return true }
+        let policy = AppSettings.shared.missedAlarmPolicy
+        if policy == .wakeOnly && reason != .wake { return false }
+        guard let window = policy.catchUpWindow else { return false }
+        return age <= window
     }
 
     private func startNextIfNeeded() {

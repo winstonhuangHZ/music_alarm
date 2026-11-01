@@ -5,6 +5,7 @@ enum RepeatType: String, Codable, CaseIterable, Identifiable, Equatable, Hashabl
     case once = "Once"
     case daily = "Daily"
     case weekdays = "Weekdays"
+    case custom = "Custom"
 
     var id: String { rawValue }
     var title: String { L(rawValue) }
@@ -24,6 +25,10 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     var minute: Int = 0
     var repeatType: RepeatType = .once
     var isEnabled: Bool = true
+    var label: String = ""
+    var scheduledDate: Date?
+    /// Calendar weekday values use Foundation's convention: Sunday = 1.
+    var weekdays: Set<Int> = []
     var requiresWakeConfirmation: Bool = false
     var wakeConfirmationState: WakeConfirmationState = .none
 
@@ -49,7 +54,7 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     var lastFiredKey: String = ""
 
     private enum CodingKeys: String, CodingKey {
-        case id, hour, minute, repeatType, isEnabled
+        case id, hour, minute, repeatType, isEnabled, label, scheduledDate, weekdays
         case requiresWakeConfirmation, wakeConfirmationState
         case tracks, audioNeedsSelection
         case audioName, audioPath, soundSource, spotifyPlaylistURL
@@ -67,6 +72,9 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         minute = try c.decodeIfPresent(Int.self, forKey: .minute) ?? 0
         repeatType = try c.decodeIfPresent(RepeatType.self, forKey: .repeatType) ?? .once
         isEnabled = try c.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+        label = try c.decodeIfPresent(String.self, forKey: .label) ?? ""
+        scheduledDate = try c.decodeIfPresent(Date.self, forKey: .scheduledDate)
+        weekdays = try c.decodeIfPresent(Set<Int>.self, forKey: .weekdays) ?? []
         requiresWakeConfirmation = try c.decodeIfPresent(Bool.self, forKey: .requiresWakeConfirmation) ?? false
         wakeConfirmationState = try c.decodeIfPresent(WakeConfirmationState.self, forKey: .wakeConfirmationState) ?? .none
         tracks = try c.decodeIfPresent([AudioTrack].self, forKey: .tracks) ?? []
@@ -114,7 +122,18 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         return L("No audio")
     }
 
-    var repeatText: String { repeatType.title }
+    var repeatText: String {
+        switch repeatType {
+        case .custom:
+            let symbols = Calendar.current.veryShortWeekdaySymbols
+            let names = weekdays.sorted().compactMap { index in
+                symbols.indices.contains(index - 1) ? symbols[index - 1] : nil
+            }
+            return names.isEmpty ? L("Custom") : names.joined(separator: " ")
+        default:
+            return repeatType.title
+        }
+    }
 
     // MARK: - Next fire date
 
@@ -126,17 +145,20 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         guard let today = scheduledDate(on: now, calendar: cal) else { return nil }
         switch repeatType {
         case .once:
+            if let scheduledDate { return scheduledDate > now ? scheduledDate : nil }
             return today > now ? today : nil
         case .daily:
             if today > now { return today }
             return cal.date(byAdding: .day, value: 1, to: today)
-        case .weekdays:
+        case .weekdays, .custom:
+            let allowedDays: Set<Int> = repeatType == .weekdays ? Set(2...6) : weekdays
+            guard !allowedDays.isEmpty else { return nil }
             var candidate = today > now
                 ? today
                 : (cal.date(byAdding: .day, value: 1, to: today) ?? today)
             while true {
                 let wd = cal.component(.weekday, from: candidate)
-                if (2...6).contains(wd) { return candidate }
+                if allowedDays.contains(wd) { return candidate }
                 guard let c = cal.date(byAdding: .day, value: 1, to: candidate) else { return nil }
                 candidate = c
             }
@@ -148,6 +170,9 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     func mostRecentOccurrence(at now: Date = Date()) -> Date? {
         if let snooze = snoozeUntil, snooze <= now { return snooze }
         let cal = Calendar.current
+        if repeatType == .once, let scheduledDate {
+            return scheduledDate <= now ? scheduledDate : nil
+        }
         var candidate: Date
         if let today = scheduledDate(on: now, calendar: cal), today <= now {
             candidate = today
@@ -160,11 +185,13 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         switch repeatType {
         case .once, .daily:
             return candidate
-        case .weekdays:
+        case .weekdays, .custom:
+            let allowedDays: Set<Int> = repeatType == .weekdays ? Set(2...6) : weekdays
+            guard !allowedDays.isEmpty else { return nil }
             var weekdayCandidate = candidate
             while true {
                 let wd = cal.component(.weekday, from: weekdayCandidate)
-                if (2...6).contains(wd) { return weekdayCandidate }
+                if allowedDays.contains(wd) { return weekdayCandidate }
                 guard let previous = cal.date(byAdding: .day, value: -1, to: weekdayCandidate),
                       let scheduled = scheduledDate(on: previous, calendar: cal) else { return nil }
                 weekdayCandidate = scheduled
