@@ -8,8 +8,10 @@ struct SettingsView: View {
     @State private var backupMessage = ""
     @State private var pendingImportURL: URL?
     @State private var showImportConfirmation = false
+    @State private var showReliabilityCheck = false
     @State private var backupPreview: BackupPreview?
     @State private var restorePolicy: BackupConflictPolicy = .replace
+    @State private var diagnosticMessage = ""
 
     private let labelColumnWidth: CGFloat = 220
     private let controlColumnWidth: CGFloat = 300
@@ -30,6 +32,11 @@ struct SettingsView: View {
                     }
                     settingRow(L("Show Music Alarm in the menu bar")) {
                         Toggle("", isOn: $settings.showMenuBarItem)
+                            .labelsHidden()
+                            .toggleStyle(CheckboxToggleStyle())
+                    }
+                    settingRow(L("Enable global shortcut Command-Option-M")) {
+                        Toggle("", isOn: $settings.globalShortcutEnabled)
                             .labelsHidden()
                             .toggleStyle(CheckboxToggleStyle())
                     }
@@ -101,6 +108,13 @@ struct SettingsView: View {
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     diagnosticsView
+                    Button {
+                        showReliabilityCheck = true
+                    } label: {
+                        Label(L("Reliability Check"), systemImage: "checkmark.shield")
+                    }
+                    .buttonStyle(BorderedButtonStyle())
+                    .accessibilityLabel(L("Reliability Check"))
                 }
 
                 settingsSection(title: L("Recent alarm history"), systemImage: "clock.arrow.circlepath") {
@@ -139,6 +153,29 @@ struct SettingsView: View {
                         .foregroundColor(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+
+                settingsSection(title: L("Diagnostics"), systemImage: "doc.text.magnifyingglass") {
+                    Button {
+                        do {
+                            let url = try DiagnosticReportManager.exportInteractively(store: store, engine: engine)
+                            diagnosticMessage = String(format: L("Diagnostic report exported to %@"), url.lastPathComponent)
+                        } catch let error as CocoaError where error.code == .userCancelled {
+                            diagnosticMessage = ""
+                        } catch {
+                            diagnosticMessage = error.localizedDescription
+                        }
+                    } label: {
+                        Label(L("Export diagnostic report"), systemImage: "square.and.arrow.up")
+                    }
+                    .buttonStyle(BorderedButtonStyle())
+                    .accessibilityLabel(L("Export diagnostic report"))
+                    if !diagnosticMessage.isEmpty {
+                        Text(diagnosticMessage)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
             }
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -147,6 +184,12 @@ struct SettingsView: View {
         .preferredColorScheme(AppThemePalette.palette(for: settings.themeChoice).colorScheme)
         .sheet(isPresented: $showImportConfirmation) {
             restoreConfirmation
+        }
+        .sheet(isPresented: $showReliabilityCheck) {
+            ReliabilityCheckView(settings: settings)
+                .environmentObject(store)
+                .environmentObject(engine)
+                .preferredColorScheme(AppThemePalette.palette(for: settings.themeChoice).colorScheme)
         }
     }
 

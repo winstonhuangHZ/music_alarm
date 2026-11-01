@@ -65,8 +65,13 @@ compile_arch() {
         -framework SwiftUI \
         -framework AppKit \
         -framework AVFoundation \
+        -framework CoreAudio \
         -framework CryptoKit \
         -framework Combine \
+        -framework MediaPlayer \
+        -framework UserNotifications \
+        -framework Carbon \
+        -framework AppIntents \
         -o "$TMP_DIR/$APP_NAME-$arch" \
         "${SWIFT_FILES[@]}" 2>"$TMP_DIR/$arch.err"; then
       echo "   [$arch] compiled OK (target: $t)."

@@ -1,5 +1,46 @@
 # Changelog
 
+## 2.25.1 - unreleased
+
+### Reliability Check crash fix
+
+- Fixed a crash when opening or running Reliability Check on macOS by passing numeric counts as string objects to localized `%@` format arguments.
+- Explicitly bridged output-device and volume strings before formatting the diagnostic row.
+
+## 2.25.0 - unreleased
+
+### macOS integrations
+
+- Added native notification actions for Stop and Snooze, with a conditional wake-up confirmation action and stale-notification protection.
+- Added an optional Command-Option-M global shortcut, Dock menu actions, and Test Alarm / pause / resume actions in the menu bar.
+- Added Shortcuts intents for opening Music Alarm and starting a non-persistent Test Alarm on macOS 13 and later.
+- Published current local playback metadata through macOS Now Playing.
+- Added a localized diagnostic report export with app build metadata and a home-directory-neutral shared-storage path.
+- Added the shortcut and diagnostics controls to Settings and completed their seven-language translations.
+
+## 2.24.0 - unreleased
+
+### Wake confirmation feedback
+
+- Added live hold progress, elapsed time, cancellation on excessive pointer movement, reset after release, completion state, and cleanup when the alarm popup closes.
+- Added a dynamic accessibility value for the three-second confirmation control.
+
+## 2.23.0 - unreleased
+
+### Music playback and staged wake-up
+
+- Added sequential, shuffle, and repeat-one playback modes with correct loop and stop behavior.
+- Added live playback progress and duration feedback to the music library bar.
+- Added support for additional local audio extensions: AAC, WAV, AIFF, and AIF, with decode validation before import.
+- Added an Advanced staged wake-up section where each playlist track can have its own volume and fade-in duration.
+
+## 2.22.0 - unreleased
+
+### Reliability center
+
+- Added a Reliability Check page in Settings for the next alarm, enabled alarm audio, imported audio health, fallback sound, output device and system volume, shared storage, and scheduler activity.
+- Added readable pass, warning, and failure results so users can run a preflight check before sleep.
+
 ## 2.21.1 - unreleased
 
 ### Playback and wake confirmation

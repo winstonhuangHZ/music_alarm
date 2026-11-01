@@ -15,7 +15,9 @@ done < <(find Sources -name '*.swift' ! -name 'main.swift' -print | sort)
 swiftc -O -swift-version 5 \
   -target x86_64-apple-macos11.0 \
   -framework SwiftUI -framework AppKit -framework AVFoundation \
+  -framework CoreAudio \
   -framework CryptoKit -framework Combine \
+  -framework MediaPlayer -framework UserNotifications -framework Carbon -framework AppIntents \
   -o "$TEST_BINARY" "${SWIFT_FILES[@]}" Tests/SharedAlarmStorageSmoke.swift
 "$TEST_BINARY"
 
@@ -41,6 +43,7 @@ required_labels=(
   'accessibilityLabel(L("Add Alarm"))'
   'accessibilityLabel(L("Stop"))'
   'accessibilityLabel(L("I am really awake"))'
+  'accessibilityLabel(L("Reliability Check"))'
 )
 for label in "${required_labels[@]}"; do
   rg -Fq "$label" Sources || {

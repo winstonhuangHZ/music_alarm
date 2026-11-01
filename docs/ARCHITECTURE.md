@@ -15,6 +15,10 @@ AppDelegate
 ├── AlarmEngine
 ├── AppSettings
 ├── SingleInstanceGuard
+├── AlarmNotificationManager
+├── GlobalShortcutManager
+├── MusicAlarmIntents (macOS 13+)
+├── DiagnosticReportManager
 └── SwiftUI views
     ├── ContentView
     ├── AddAlarmView
@@ -50,6 +54,8 @@ AppDelegate
 
 每个闹钟保存播放渐入、目标音量、最大播放时长和播放列表是否循环。测试闹钟使用同一套播放和弹窗路径，但不会修改持久化闹钟状态。
 
+播放列表还保存播放模式和每首音轨的播放设置。`AlarmEngine` 负责顺序、随机和单曲循环的推进；启用分阶段唤醒时，当前音轨使用自己的音量和渐入设置，否则回退到闹钟级默认值。`AudioManager` 发布当前播放器的进度和总时长，供音乐库入口显示试听进度。
+
 起床确认由 `AppSettings` 全局开启，再由单个闹钟选择是否要求确认。确认期限和方式也由设置控制，时间戳保存在闹钟记录中。
 
 ### `AudioManager`
@@ -58,11 +64,27 @@ AppDelegate
 
 当播放列表不循环并且最后一首完成时，`AlarmEngine` 走统一的 stop/finish 路径，确保音频、弹窗、最大播放计时器和候选队列同时清理。
 
+本地预览和闹钟播放期间，`AudioManager` 向 `MPNowPlayingInfoCenter` 发布标题、艺人、播放进度、时长和播放速率；停止或自然结束时清除 Now Playing 元数据。
+
+### macOS 集成
+
+- `AlarmNotificationManager` 注册停止和贪睡操作；仅对启用了起床确认的闹钟显示确认操作。动作执行前校验闹钟 ID，响铃结束时清理待投递和已送达通知。
+- `GlobalShortcutManager` 可选注册 Command-Option-M，并在关闭设置或进程退出时释放 Carbon 快捷键。
+- `MusicAlarmIntents` 在 macOS 13 及以上提供打开应用和启动非持久测试闹钟的 Shortcuts 操作，并请求前台执行以呈现界面。
+- `AppDelegate` 提供 Dock 和菜单栏入口，用于打开应用、测试闹钟、暂停今天和恢复全部闹钟。
+- `DiagnosticReportManager` 导出调度器、共享存储、语言、时区、闹钟数量及版本/构建信息；共享目录使用通用路径，避免报告带出本机账户名。
+
+应用包内的 `MusicAlarm.build-info` 记录版本、构建号和源码 commit，可用于识别安装包和诊断报告对应的构建。当前没有自动检查或安装更新的流程。
+
 ### `MusicLibraryPanel`
 
 主窗口只显示音乐库摘要和展开入口，完整音频管理放在右侧面板。面板使用垂直音频行，
 每行提供播放、替换和删除操作，并把扫描、孤立文件清理和重复音频清理放在音乐库上下文中。
 这些日常操作不再占用设置页面。
+
+### `ReliabilityCheckView`
+
+Settings 中的可靠性检查页面提供睡前预检：读取下一次闹钟、启用闹钟的可播放音频、导入音频库健康状态、系统 fallback、默认输出设备和音量、共享存储可写性，以及调度器最近是否运行。检查结果分为通过、需要注意和失败，检查不会修改闹钟配置。
 
 全局暂停和单个闹钟临时禁用会在候选生成、最近 deadline 计算和播放队列开始前同时检查，
 因此暂停期间不会产生新的 occurrence。暂停截止后，重新激活、存储变化或定时器会让调度器

@@ -1,7 +1,9 @@
 import Foundation
 
-/// Allowed audio file extensions for import (.mp3 / .m4a only).
-let musicFileTypes: [String] = ["mp3", "m4a"]
+/// Audio formats that AVAudioPlayer can inspect and play on supported macOS
+/// installations. The picker uses these extensions as a first filter; decode
+/// validation still happens before an item enters the shared library.
+let musicFileTypes: [String] = ["mp3", "m4a", "aac", "wav", "aiff", "aif"]
 
 enum MissedAlarmPolicy: String, CaseIterable, Identifiable {
     case never = "Never"
@@ -32,6 +34,23 @@ enum WakeConfirmationMode: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
     var title: String { L(rawValue) }
+}
+
+enum PlaylistPlaybackMode: String, Codable, CaseIterable, Identifiable {
+    case sequential = "In order"
+    case shuffle = "Shuffle"
+    case repeatOne = "Repeat one"
+
+    var id: String { rawValue }
+    var title: String { L(rawValue) }
+}
+
+struct TrackPlaybackSettings: Codable, Equatable {
+    var volumePercent: Int = 85
+    var fadeDurationSeconds: Int = 20
+
+    var clampedVolumePercent: Int { min(max(volumePercent, 0), 100) }
+    var clampedFadeDurationSeconds: Int { min(max(fadeDurationSeconds, 0), 60) }
 }
 
 enum FallbackSoundChoice: String, CaseIterable, Identifiable {

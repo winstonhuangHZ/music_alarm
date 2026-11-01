@@ -52,6 +52,10 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(themeChoice.rawValue, forKey: Keys.themeChoice) }
     }
 
+    @Published var globalShortcutEnabled: Bool {
+        didSet { UserDefaults.standard.set(globalShortcutEnabled, forKey: Keys.globalShortcutEnabled) }
+    }
+
     @Published private(set) var launchAtLoginError: String?
 
     private enum Keys {
@@ -65,6 +69,7 @@ final class AppSettings: ObservableObject {
         static let wakeConfirmationMode = "MusicAlarm.wakeConfirmationMode.v1"
         static let fallbackSoundChoice = "MusicAlarm.fallbackSoundChoice.v1"
         static let themeChoice = "MusicAlarm.themeChoice.v1"
+        static let globalShortcutEnabled = "MusicAlarm.globalShortcutEnabled.v1"
     }
 
     private init() {
@@ -77,6 +82,7 @@ final class AppSettings: ObservableObject {
         wakeConfirmationMode = WakeConfirmationMode(rawValue: UserDefaults.standard.string(forKey: Keys.wakeConfirmationMode) ?? "") ?? .button
         fallbackSoundChoice = FallbackSoundChoice(rawValue: UserDefaults.standard.string(forKey: Keys.fallbackSoundChoice) ?? "") ?? .glass
         themeChoice = ThemeChoice(rawValue: UserDefaults.standard.string(forKey: Keys.themeChoice) ?? "") ?? .system
+        globalShortcutEnabled = UserDefaults.standard.object(forKey: Keys.globalShortcutEnabled) as? Bool ?? false
 
         if #available(macOS 13.0, *) {
             launchAtLogin = SMAppService.mainApp.status == .enabled

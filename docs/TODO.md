@@ -5,8 +5,33 @@ are removed after their version is committed and pushed.
 
 ## Remaining
 
-暂无 2.18.0 之前已确定且未完成的项目。后续功能候选会在确认范围后加入这里，完成后从 Remaining
-移动到对应版本的 Completed 小节。
+暂无已确定且未完成的项目。新功能先加入本列表，完成并验证后再移到对应版本的 Completed 小节。
+
+## Completed in 2.25.1
+
+- Fixed the Reliability Check crash caused by passing `Int` values to `%@` localized format placeholders.
+
+## Completed in 2.25.0
+
+- Added native alarm notifications with Stop, Snooze, and conditional wake-confirmation actions, and guarded against stale notification actions.
+- Added optional Command-Option-M activation, Dock menu controls, and menu-bar Test Alarm / pause / resume actions.
+- Added macOS 13+ App Intents for opening the app and running a non-persistent test alarm.
+- Published local playback metadata to Now Playing.
+- Added localized diagnostic report export with app version/build metadata and a privacy-neutral shared-storage location.
+- Added Settings controls for the global shortcut and diagnostic export, with complete localization across seven languages.
+
+## Completed in 2.24.0
+
+- Upgraded the three-second confirmation with visible progress, elapsed time, cancellation and reset feedback, completion state, popup cleanup, and accessibility value feedback.
+
+## Completed in 2.23.0
+
+- Upgraded local playback with sequential, shuffle, repeat-one, progress feedback, duration feedback, damaged-track skipping, and additional audio format filters.
+- Added Advanced staged wake-up settings with per-track volume and fade-in controls.
+
+## Completed in 2.22.0
+
+- Added a Reliability Check page that checks the next alarm, alarm audio, imported audio health, fallback sound, output device and volume, shared storage, and scheduler activity.
 
 ## Completed in 2.21.1
 

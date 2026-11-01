@@ -15,6 +15,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var sharedStorageObserver: NSObjectProtocol?
     private var statusItem: NSStatusItem?
     private var settingsWindow: NSWindow?
+    private let globalShortcutManager = GlobalShortcutManager()
+    private var settingsCancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let store = AlarmStore()
@@ -41,10 +43,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             engine?.advanceToNextTrack()
         }
 
+        AlarmNotificationManager.shared.configure(engine: engine)
         engine.start()
         setupMenu()
         createMainWindow()
         updateMenuBarItem()
+        configureGlobalShortcut()
+        appSettings.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updateMenuBarItem()
+                self?.configureGlobalShortcut()
+            }
+            .store(in: &settingsCancellables)
 
         NSApp.setActivationPolicy(.regular)
         if appSettings.hideMainWindowOnLaunch {
@@ -144,11 +155,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.mainMenu = mainMenu
     }
 
+    private func configureGlobalShortcut() {
+        if appSettings.globalShortcutEnabled {
+            globalShortcutManager.start { [weak self] in
+                DispatchQueue.main.async { self?.showMainWindow() }
+            }
+        } else {
+            globalShortcutManager.stop()
+        }
+    }
+
     private func updateMenuBarItem() {
         if appSettings.showMenuBarItem {
             if statusItem == nil {
                 let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-                item.button?.image = NSImage(systemSymbolName: "alarm.fill", accessibilityDescription: L("Music Alarm"))
+                if #available(macOS 11.0, *) {
+                    item.button?.image = NSImage(systemSymbolName: "alarm.fill", accessibilityDescription: L("Music Alarm"))
+                } else {
+                    item.button?.title = "⏰"
+                }
                 item.button?.imagePosition = .imageOnly
                 let menu = NSMenu()
                 menu.addItem(withTitle: L("Open Music Alarm"),
@@ -156,6 +181,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                              keyEquivalent: "")
                 menu.addItem(withTitle: L("Settings…"),
                              action: #selector(openSettings),
+                             keyEquivalent: "")
+                menu.addItem(withTitle: L("Test Alarm"),
+                             action: #selector(testAlarmFromMenu),
+                             keyEquivalent: "")
+                menu.addItem(withTitle: L("Pause today"),
+                             action: #selector(pauseTodayFromMenu),
+                             keyEquivalent: "")
+                menu.addItem(withTitle: L("Resume all alarms"),
+                             action: #selector(resumeAllFromMenu),
                              keyEquivalent: "")
                 menu.addItem(NSMenuItem.separator())
                 menu.addItem(withTitle: L("Quit Music Alarm"),
@@ -172,6 +206,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func showMainWindowFromMenu() {
+        showMainWindow()
+    }
+
+    func showMainWindowForIntent() {
         showMainWindow()
     }
 
@@ -202,10 +240,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.settingsWindow = settingsWindow
         NSApp.activate(ignoringOtherApps: true)
 
-        appSettings.objectWillChange.sink { [weak self] _ in
-            DispatchQueue.main.async { self?.updateMenuBarItem() }
-        }.store(in: &settingsCancellables)
     }
 
-    private var settingsCancellables = Set<AnyCancellable>()
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let menu = NSMenu()
+        menu.addItem(withTitle: L("Open Music Alarm"), action: #selector(showMainWindowFromMenu), keyEquivalent: "")
+        menu.addItem(withTitle: L("Test Alarm"), action: #selector(testAlarmFromMenu), keyEquivalent: "")
+        menu.addItem(NSMenuItem.separator())
+        menu.addItem(withTitle: L("Pause today"), action: #selector(pauseTodayFromMenu), keyEquivalent: "")
+        menu.addItem(withTitle: L("Resume all alarms"), action: #selector(resumeAllFromMenu), keyEquivalent: "")
+        menu.items.forEach { $0.target = self }
+        return menu
+    }
+
+    @objc private func testAlarmFromMenu() {
+        engine?.testAlarm()
+    }
+
+    func testAlarmForIntent() {
+        engine?.testAlarm()
+    }
+
+    @objc private func pauseTodayFromMenu() {
+        store?.pauseToday()
+    }
+
+    @objc private func resumeAllFromMenu() {
+        store?.resumeAll()
+    }
 }

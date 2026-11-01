@@ -25,6 +25,9 @@ struct AddAlarmView: View {
     @State private var targetVolumePercent = 85
     @State private var maximumPlaybackMinutes = 30
     @State private var loopsPlaylist = true
+    @State private var playlistPlaybackMode: PlaylistPlaybackMode = .sequential
+    @State private var stagedWakeEnabled = false
+    @State private var trackPlaybackSettings: [TrackPlaybackSettings] = []
     @State private var snoozeMinutes = 5
 
     init(alarm: AlarmItem? = nil) {
@@ -48,6 +51,10 @@ struct AddAlarmView: View {
             _targetVolumePercent = State(initialValue: alarm.targetVolumePercent)
             _maximumPlaybackMinutes = State(initialValue: alarm.maximumPlaybackMinutes)
             _loopsPlaylist = State(initialValue: alarm.loopsPlaylist)
+            _playlistPlaybackMode = State(initialValue: alarm.playlistPlaybackMode)
+            _stagedWakeEnabled = State(initialValue: alarm.stagedWakeEnabled)
+            _trackPlaybackSettings = State(initialValue: Self.normalizedTrackSettings(alarm.trackPlaybackSettings,
+                                                                                       count: alarm.tracks.count))
             _snoozeMinutes = State(initialValue: alarm.snoozeMinutes)
         } else {
             comps.hour = 7
@@ -109,6 +116,8 @@ struct AddAlarmView: View {
                     playbackSection
 
                     playlistSection
+
+                    stagedWakeSection
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.trailing, 4)
@@ -201,12 +210,93 @@ struct AddAlarmView: View {
                 Text(L("30 minutes")).tag(30)
             }
             Toggle(L("Loop the playlist"), isOn: $loopsPlaylist)
+            Picker(L("Playback order"), selection: $playlistPlaybackMode) {
+                ForEach(PlaylistPlaybackMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            Text(L("Shuffle chooses a different track after each song; Repeat one keeps the current song playing."))
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
         )
+    }
+
+    private var stagedWakeSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Toggle(L("Staged wake-up"), isOn: $stagedWakeEnabled)
+                .font(.headline)
+            Text(L("Set the volume and fade for each track. The alarm moves through the playlist using these stages."))
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if stagedWakeEnabled {
+                ForEach(Array(tracks.enumerated()), id: \.offset) { index, track in
+                    stagedTrackRow(track, index: index)
+                }
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    private func stagedTrackRow(_ track: AudioTrack, index: Int) -> some View {
+        let binding = Binding<TrackPlaybackSettings>(
+            get: {
+                trackPlaybackSettings.indices.contains(index)
+                    ? trackPlaybackSettings[index]
+                    : TrackPlaybackSettings()
+            },
+            set: { value in
+                ensureTrackSettingsCount()
+                trackPlaybackSettings[index] = value
+            }
+        )
+
+        return VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Image(systemName: "music.note")
+                Text("\(index + 1). \(track.displayName)")
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(1)
+                Spacer()
+                Text("\(binding.wrappedValue.volumePercent)%")
+                    .font(.caption.monospacedDigit())
+                    .foregroundColor(.secondary)
+            }
+            HStack(spacing: 8) {
+                Text(L("Volume"))
+                    .font(.caption)
+                    .frame(width: 58, alignment: .leading)
+                Slider(value: Binding(
+                    get: { Double(binding.wrappedValue.volumePercent) },
+                    set: { binding.wrappedValue.volumePercent = Int($0.rounded()) }
+                ), in: 0...100, step: 5)
+                Text(L("Fade in"))
+                    .font(.caption)
+                Picker("", selection: binding.fadeDurationSeconds) {
+                    Text(L("No fade")).tag(0)
+                    Text(L("5 seconds")).tag(5)
+                    Text(L("10 seconds")).tag(10)
+                    Text(L("20 seconds")).tag(20)
+                    Text(L("30 seconds")).tag(30)
+                }
+                .labelsHidden()
+                .frame(width: 100)
+            }
+        }
+        .padding(9)
+        .background(Color(NSColor.controlBackgroundColor).opacity(0.72))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     // MARK: - Track list
@@ -355,6 +445,8 @@ struct AddAlarmView: View {
         guard let id = selectedAudioID,
               let audio = store.importedAudios.first(where: { $0.id == id }) else { return }
         tracks.append(.local(name: audio.name, path: audio.urlString, audioID: audio.id))
+        trackPlaybackSettings.append(TrackPlaybackSettings(volumePercent: targetVolumePercent,
+                                                            fadeDurationSeconds: fadeDurationSeconds))
         selectedAudioID = nil
         audioNeedsSelection = tracks.isEmpty || !tracks.contains(where: \.isPlayable)
     }
@@ -402,17 +494,24 @@ struct AddAlarmView: View {
 
     private func removeTrack(at index: Int) {
         tracks.remove(at: index)
+        if trackPlaybackSettings.indices.contains(index) {
+            trackPlaybackSettings.remove(at: index)
+        }
         audioNeedsSelection = tracks.isEmpty || !tracks.contains(where: \.isPlayable)
     }
 
     private func moveTrackUp(_ index: Int) {
         guard index > 0 else { return }
         tracks.swapAt(index, index - 1)
+        ensureTrackSettingsCount()
+        trackPlaybackSettings.swapAt(index, index - 1)
     }
 
     private func moveTrackDown(_ index: Int) {
         guard index < tracks.count - 1 else { return }
         tracks.swapAt(index, index + 1)
+        ensureTrackSettingsCount()
+        trackPlaybackSettings.swapAt(index, index + 1)
     }
 
     // MARK: - Save
@@ -439,6 +538,10 @@ struct AddAlarmView: View {
         alarm.targetVolumePercent = targetVolumePercent
         alarm.maximumPlaybackMinutes = maximumPlaybackMinutes
         alarm.loopsPlaylist = loopsPlaylist
+        alarm.playlistPlaybackMode = playlistPlaybackMode
+        alarm.stagedWakeEnabled = stagedWakeEnabled
+        ensureTrackSettingsCount()
+        alarm.trackPlaybackSettings = Array(trackPlaybackSettings.prefix(tracks.count))
         alarm.snoozeMinutes = snoozeMinutes
 
         if editingAlarm != nil {
@@ -447,5 +550,22 @@ struct AddAlarmView: View {
             store.addAlarm(alarm)
         }
         presentationMode.wrappedValue.dismiss()
+    }
+
+    private func ensureTrackSettingsCount() {
+        if trackPlaybackSettings.count < tracks.count {
+            trackPlaybackSettings += Array(repeating: TrackPlaybackSettings(volumePercent: targetVolumePercent,
+                                                                              fadeDurationSeconds: fadeDurationSeconds),
+                                           count: tracks.count - trackPlaybackSettings.count)
+        } else if trackPlaybackSettings.count > tracks.count {
+            trackPlaybackSettings = Array(trackPlaybackSettings.prefix(tracks.count))
+        }
+    }
+
+    private static func normalizedTrackSettings(_ settings: [TrackPlaybackSettings], count: Int) -> [TrackPlaybackSettings] {
+        if settings.count < count {
+            return settings + Array(repeating: TrackPlaybackSettings(), count: count - settings.count)
+        }
+        return Array(settings.prefix(count))
     }
 }

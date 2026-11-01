@@ -46,6 +46,9 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     /// Zero means no automatic maximum duration.
     var maximumPlaybackMinutes: Int = 30
     var loopsPlaylist: Bool = true
+    var playlistPlaybackMode: PlaylistPlaybackMode = .sequential
+    var stagedWakeEnabled: Bool = false
+    var trackPlaybackSettings: [TrackPlaybackSettings] = []
 
     // ---- v2.1 playlist model ----
     /// Ordered list of local audio tracks.
@@ -74,6 +77,7 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         case wakeStartedAt, wakeStoppedAt, wakeConfirmedAt, wakeConfirmationDeadline, wakeOccurrenceID
         case skipNextOccurrenceKey, snoozeMinutes
         case fadeDurationSeconds, targetVolumePercent, maximumPlaybackMinutes, loopsPlaylist
+        case playlistPlaybackMode, stagedWakeEnabled, trackPlaybackSettings
         case tracks, audioNeedsSelection
         case audioName, audioPath, soundSource, spotifyPlaylistURL
         case snoozeUntil, lastFiredKey
@@ -107,6 +111,9 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         targetVolumePercent = try c.decodeIfPresent(Int.self, forKey: .targetVolumePercent) ?? 85
         maximumPlaybackMinutes = try c.decodeIfPresent(Int.self, forKey: .maximumPlaybackMinutes) ?? 30
         loopsPlaylist = try c.decodeIfPresent(Bool.self, forKey: .loopsPlaylist) ?? true
+        playlistPlaybackMode = try c.decodeIfPresent(PlaylistPlaybackMode.self, forKey: .playlistPlaybackMode) ?? .sequential
+        stagedWakeEnabled = try c.decodeIfPresent(Bool.self, forKey: .stagedWakeEnabled) ?? false
+        trackPlaybackSettings = try c.decodeIfPresent([TrackPlaybackSettings].self, forKey: .trackPlaybackSettings) ?? []
         tracks = try c.decodeIfPresent([AudioTrack].self, forKey: .tracks) ?? []
         audioNeedsSelection = try c.decodeIfPresent(Bool.self, forKey: .audioNeedsSelection) ?? false
         audioName = try c.decodeIfPresent(String.self, forKey: .audioName)
@@ -271,14 +278,21 @@ struct AlarmItem: Identifiable, Codable, Equatable {
             }
             audioNeedsSelection = true
         }
-        guard tracks.isEmpty else { return }
-        let source = (soundSource ?? "local").lowercased()
-        if source == "spotify" || source == "spotify playlist" {
-            audioNeedsSelection = true
-            soundSource = nil
-            spotifyPlaylistURL = nil
-        } else if let path = audioPath, let name = audioName, !path.isEmpty {
-            tracks = [.local(name: name, path: path, audioID: id)]
+        if tracks.isEmpty {
+            let source = (soundSource ?? "local").lowercased()
+            if source == "spotify" || source == "spotify playlist" {
+                audioNeedsSelection = true
+                soundSource = nil
+                spotifyPlaylistURL = nil
+            } else if let path = audioPath, let name = audioName, !path.isEmpty {
+                tracks = [.local(name: name, path: path, audioID: id)]
+            }
+        }
+
+        if trackPlaybackSettings.count < tracks.count {
+            trackPlaybackSettings += Array(repeating: TrackPlaybackSettings(), count: tracks.count - trackPlaybackSettings.count)
+        } else if trackPlaybackSettings.count > tracks.count {
+            trackPlaybackSettings = Array(trackPlaybackSettings.prefix(tracks.count))
         }
     }
 }

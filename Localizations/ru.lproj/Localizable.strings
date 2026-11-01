@@ -216,3 +216,60 @@
 "Open Music Library" = "Открыть медиатеку";
 "Close" = "Закрыть";
 "Music Alarm" = "Music Alarm";
+
+
+/* Reliability check */
+"Reliability Check" = "Reliability Check";
+"Run Check" = "Run Check";
+"Run this before sleep to check whether the next alarm has a usable audio path and a working scheduler." = "Run this before sleep to check whether the next alarm has a usable audio path and a working scheduler.";
+"Last checked %@" = "Last checked %@";
+"No check has been run" = "No check has been run";
+"Run a reliability check to inspect the next alarm and audio path." = "Run a reliability check to inspect the next alarm and audio path.";
+"Next alarm" = "Next alarm";
+"%@ at %@" = "%@ at %@";
+"No enabled alarms are scheduled." = "No enabled alarms are scheduled.";
+"Enabled alarms do not have a future occurrence." = "Enabled alarms do not have a future occurrence.";
+"%@ is available." = "%@ is available.";
+"%@ is not available." = "%@ is not available.";
+"Audio library" = "Audio library";
+"%@ imported audio items are present and playable." = "%@ imported audio items are present and playable.";
+"%@ imported audio items need attention." = "%@ imported audio items need attention.";
+"Alarm audio" = "Alarm audio";
+"%@ enabled alarms have a playable track." = "%@ enabled alarms have a playable track.";
+"%@ enabled alarms have no playable track; fallback will be used." = "%@ enabled alarms have no playable track; fallback will be used.";
+"%@ enabled alarms have no playable track or fallback." = "%@ enabled alarms have no playable track or fallback.";
+"Output device" = "Output device";
+"%@, system volume %@." = "%@, system volume %@.";
+"volume unavailable" = "volume unavailable";
+"No default audio output device could be read." = "No default audio output device could be read.";
+"Shared storage" = "Shared storage";
+"Shared data is writable at %@." = "Shared data is writable at %@.";
+"Shared data is not writable at %@." = "Shared data is not writable at %@.";
+"Scheduler" = "Scheduler";
+"The scheduler has checked the current system time and is active." = "The scheduler has checked the current system time and is active.";
+"The scheduler has not reported an event yet." = "The scheduler has not reported an event yet.";
+
+
+/* Playback and staged wake-up */
+"In order" = "In order";
+"Shuffle" = "Shuffle";
+"Repeat one" = "Repeat one";
+"Playback order" = "Playback order";
+"Staged wake-up" = "Staged wake-up";
+"Set the volume and fade for each track. The alarm moves through the playlist using these stages." = "Set the volume and fade for each track. The alarm moves through the playlist using these stages.";
+"Shuffle chooses a different track after each song; Repeat one keeps the current song playing." = "Shuffle chooses a different track after each song; Repeat one keeps the current song playing.";
+"Volume" = "Volume";
+"Wake-up confirmed" = "Wake-up confirmed";
+"Playback progress" = "Playback progress";
+
+
+/* Expanded local audio format support */
+"No music imported. Click “Import Music” to add a supported local audio file." = "No music imported. Click “Import Music” to add a supported local audio file.";
+"Select a supported local audio file" = "Select a supported local audio file";
+
+/* macOS integrations */
+"Enable global shortcut Command-Option-M" = "Включить глобальное сочетание клавиш Command-Option-M";
+"Diagnostics" = "Диагностика";
+"Export diagnostic report" = "Экспортировать отчет диагностики";
+"Diagnostic report exported to %@" = "Отчет диагностики сохранен: %@";
+"Snooze" = "Отложить";
