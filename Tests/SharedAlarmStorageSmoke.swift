@@ -127,6 +127,26 @@ struct SharedAlarmStorageSmoke {
         })
         precondition(restoredStore.alarms.first(where: { $0.id == failedAlarm.id })?.isEnabled == false)
 
+        let healthRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("music-alarm-health-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: healthRoot) }
+        let healthStorage = SharedAlarmStorage(rootURL: healthRoot)
+        try healthStorage.prepareDirectories()
+        let orphanURL = healthStorage.audioDirectoryURL.appendingPathComponent("orphan.m4a")
+        try Data("orphan".utf8).write(to: orphanURL)
+        let healthStore = AlarmStore(storage: healthStorage)
+        let firstAudio = ImportedAudio(name: "First", urlString: "/tmp/first.m4a",
+                                       isManagedCopy: true, contentHash: "same-hash")
+        let secondAudio = ImportedAudio(name: "Second", urlString: "/tmp/second.m4a",
+                                        isManagedCopy: true, contentHash: "same-hash")
+        healthStore.importedAudios = [firstAudio, secondAudio]
+        let report = healthStore.audioLibraryReport()
+        precondition(report.duplicateGroups.count == 1)
+        precondition(report.orphanedManagedFiles.count == 1)
+        precondition(healthStore.removeOrphanedManagedAudioFiles() == 1)
+        precondition(healthStore.deduplicateAudioLibrary() == 1)
+        precondition(healthStore.importedAudios.count == 1)
+
         print("shared storage smoke test passed")
     }
 }

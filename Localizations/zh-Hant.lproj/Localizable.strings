@@ -177,3 +177,10 @@
 "%@ alarms, %@ audio items, %@ history records, %@ missing audio files" = "%@ alarms, %@ audio items, %@ history records, %@ missing audio files";
 "Conflict handling" = "Conflict handling";
 "A merge keeps current records and lets backup records with the same ID replace them." = "A merge keeps current records and lets backup records with the same ID replace them.";
+"%@ missing items, %@ duplicate groups, %@ orphaned files" = "%@ missing items, %@ duplicate groups, %@ orphaned files";
+"Audio library health" = "Audio library health";
+"Scan audio library" = "Scan audio library";
+"Remove orphaned files" = "Remove orphaned files";
+"Deduplicate audio" = "Deduplicate audio";
+"Removed %@ orphaned files" = "Removed %@ orphaned files";
+"Removed %@ duplicate items" = "Removed %@ duplicate items";

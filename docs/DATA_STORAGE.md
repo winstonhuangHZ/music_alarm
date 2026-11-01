@@ -24,7 +24,8 @@
 
 ### `imported-audios.json`
 
-保存 `[ImportedAudio]`。每项记录稳定 UUID、显示名称和共享音频文件路径。
+保存 `[ImportedAudio]`。每项记录稳定 UUID、显示名称、共享音频文件路径和可选的
+SHA-256 内容 hash。hash 用于识别内容相同但文件名或路径不同的导入文件。
 
 ### `occurrences.json`
 

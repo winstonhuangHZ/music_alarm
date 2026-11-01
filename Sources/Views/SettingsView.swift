@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var showImportConfirmation = false
     @State private var backupPreview: BackupPreview?
     @State private var restorePolicy: BackupConflictPolicy = .replace
+    @State private var libraryMessage = ""
 
     var body: some View {
         Form {
@@ -89,6 +90,27 @@ struct SettingsView: View {
                 }
             }
 
+            Section(header: Text(L("Audio library health"))) {
+                HStack {
+                    Button(L("Scan audio library")) {
+                        libraryMessage = store.audioLibraryReport().summary
+                    }
+                    Button(L("Remove orphaned files")) {
+                        let count = store.removeOrphanedManagedAudioFiles()
+                        libraryMessage = String(format: L("Removed %@ orphaned files"), "\(count)")
+                    }
+                    Button(L("Deduplicate audio")) {
+                        let count = store.deduplicateAudioLibrary()
+                        libraryMessage = String(format: L("Removed %@ duplicate items"), "\(count)")
+                    }
+                }
+                if !libraryMessage.isEmpty {
+                    Text(libraryMessage)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
             Section(header: Text(L("Backup and restore"))) {
                 HStack {
                     Button(L("Export backup")) {
@@ -129,7 +151,7 @@ struct SettingsView: View {
             }
         }
         .padding(20)
-        .frame(width: 430, height: 560)
+        .frame(width: 500, height: 680)
         .sheet(isPresented: $showImportConfirmation) {
             VStack(alignment: .leading, spacing: 14) {
                 Text(L("Restore backup?"))

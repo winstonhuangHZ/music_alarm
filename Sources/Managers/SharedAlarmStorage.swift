@@ -138,6 +138,12 @@ final class SharedAlarmStorage {
         }
     }
 
+    func managedAudioFiles() -> [URL] {
+        (try? fileManager.contentsOfDirectory(at: audioDirectoryURL,
+                                               includingPropertiesForKeys: nil,
+                                               options: [.skipsHiddenFiles])) ?? []
+    }
+
     /// Copies legacy absolute-path audio into shared storage and rewrites
     /// every matching local track to its new stable path.
     func migrateLegacyAudio(alarms: inout [AlarmItem], importedAudios: inout [ImportedAudio]) {

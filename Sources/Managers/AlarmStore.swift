@@ -2,6 +2,7 @@ import Foundation
 import AppKit
 import Combine
 import AVFoundation
+import CryptoKit
 
 /// A user-imported audio file stored in the shared application data directory.
 struct ImportedAudio: Identifiable, Codable, Equatable {
@@ -9,17 +10,20 @@ struct ImportedAudio: Identifiable, Codable, Equatable {
     var name: String
     var urlString: String
     var isManagedCopy: Bool = true
+    var contentHash: String?
 
     var url: URL { URL(fileURLWithPath: urlString) }
     var fileExists: Bool { FileManager.default.fileExists(atPath: urlString) }
 
-    private enum CodingKeys: String, CodingKey { case id, name, urlString, isManagedCopy }
+    private enum CodingKeys: String, CodingKey { case id, name, urlString, isManagedCopy, contentHash }
 
-    init(id: UUID = UUID(), name: String, urlString: String, isManagedCopy: Bool = true) {
+    init(id: UUID = UUID(), name: String, urlString: String, isManagedCopy: Bool = true,
+         contentHash: String? = nil) {
         self.id = id
         self.name = name
         self.urlString = urlString
         self.isManagedCopy = isManagedCopy
+        self.contentHash = contentHash
     }
 
     init(from decoder: Decoder) throws {
@@ -28,6 +32,7 @@ struct ImportedAudio: Identifiable, Codable, Equatable {
         name = try c.decode(String.self, forKey: .name)
         urlString = try c.decode(String.self, forKey: .urlString)
         isManagedCopy = try c.decodeIfPresent(Bool.self, forKey: .isManagedCopy) ?? true
+        contentHash = try c.decodeIfPresent(String.self, forKey: .contentHash)
     }
 }
 
@@ -496,7 +501,10 @@ final class AlarmStore: ObservableObject {
             NSLog("AlarmStore: rejected audio that AVAudioPlayer cannot decode: %@", url.path)
             return nil
         }
-        if let existing = importedAudios.first(where: { sameFile($0.url, url) }) {
+        let hash = contentHash(for: url)
+        if let existing = importedAudios.first(where: {
+            sameFile($0.url, url) || (hash != nil && $0.contentHash == hash)
+        }) {
             return existing
         }
         let audioID = UUID()
@@ -514,7 +522,8 @@ final class AlarmStore: ObservableObject {
             let audio = ImportedAudio(id: audioID,
                                       name: name,
                                       urlString: storedURL.path,
-                                      isManagedCopy: managedCopy)
+                                      isManagedCopy: managedCopy,
+                                      contentHash: hash)
             importedAudios.append(audio)
             persistImportedAudiosAfterUserChange()
             return audio
@@ -568,6 +577,7 @@ final class AlarmStore: ObservableObject {
             }
             importedAudios[index].name = sourceURL.deletingPathExtension().lastPathComponent
             importedAudios[index].urlString = storedURL.path
+            importedAudios[index].contentHash = contentHash(for: sourceURL)
             for alarmIndex in alarms.indices {
                 for trackIndex in alarms[alarmIndex].tracks.indices {
                     if case .local(_, _, let audioID) = alarms[alarmIndex].tracks[trackIndex], audioID == id {
@@ -594,6 +604,9 @@ final class AlarmStore: ObservableObject {
         }
         var migratedAudios = importedAudios
         storage.migrateLegacyAudio(alarms: &migratedAlarms, importedAudios: &migratedAudios)
+        for index in migratedAudios.indices where migratedAudios[index].contentHash == nil {
+            migratedAudios[index].contentHash = contentHash(for: migratedAudios[index].url)
+        }
 
         if migratedAlarms != alarms {
             alarms = migratedAlarms
@@ -624,6 +637,87 @@ final class AlarmStore: ObservableObject {
         guard FileManager.default.fileExists(atPath: url.path),
               let player = try? AVAudioPlayer(contentsOf: url) else { return false }
         return player.duration > 0
+    }
+
+    struct AudioLibraryReport {
+        let missingAudioIDs: [UUID]
+        let duplicateGroups: [[UUID]]
+        let orphanedManagedFiles: [URL]
+
+        var summary: String {
+            String(format: L("%@ missing items, %@ duplicate groups, %@ orphaned files"),
+                   "\(missingAudioIDs.count)", "\(duplicateGroups.count)", "\(orphanedManagedFiles.count)")
+        }
+    }
+
+    func audioLibraryReport() -> AudioLibraryReport {
+        let missing = importedAudios.filter { !$0.fileExists }.map(\.id)
+        var groups: [String: [UUID]] = [:]
+        for audio in importedAudios {
+            if let hash = audio.contentHash ?? contentHash(for: audio.url) {
+                groups[hash, default: []].append(audio.id)
+            }
+        }
+        let duplicates = groups.values.filter { $0.count > 1 }
+        let knownIDs = Set(importedAudios.map { $0.id.uuidString })
+        let orphaned = storage.managedAudioFiles().filter {
+            !knownIDs.contains($0.deletingPathExtension().lastPathComponent)
+        }
+        return AudioLibraryReport(missingAudioIDs: missing,
+                                  duplicateGroups: duplicates,
+                                  orphanedManagedFiles: orphaned)
+    }
+
+    @discardableResult
+    func removeOrphanedManagedAudioFiles() -> Int {
+        let report = audioLibraryReport()
+        for file in report.orphanedManagedFiles { try? FileManager.default.removeItem(at: file) }
+        return report.orphanedManagedFiles.count
+    }
+
+    /// Keeps the first library item in each content-hash group and rewrites all
+    /// alarm references before deleting duplicate managed copies.
+    @discardableResult
+    func deduplicateAudioLibrary() -> Int {
+        let report = audioLibraryReport()
+        var replacements: [UUID: ImportedAudio] = [:]
+        for group in report.duplicateGroups {
+            guard let canonicalID = group.first,
+                  let canonical = importedAudios.first(where: { $0.id == canonicalID }) else { continue }
+            for duplicateID in group.dropFirst() { replacements[duplicateID] = canonical }
+        }
+        guard !replacements.isEmpty else { return 0 }
+        for alarmIndex in alarms.indices {
+            for trackIndex in alarms[alarmIndex].tracks.indices {
+                guard case .local(let name, _, let audioID) = alarms[alarmIndex].tracks[trackIndex],
+                      let canonical = replacements[audioID] else { continue }
+                alarms[alarmIndex].tracks[trackIndex] = .local(name: name,
+                                                               path: canonical.urlString,
+                                                               audioID: canonical.id)
+            }
+        }
+        for duplicateID in replacements.keys {
+            if importedAudios.first(where: { $0.id == duplicateID })?.isManagedCopy == true {
+                storage.removeAudioFile(for: duplicateID)
+            }
+        }
+        importedAudios.removeAll { replacements[$0.id] != nil }
+        persistAlarmsAfterUserChange()
+        persistImportedAudiosAfterUserChange()
+        return replacements.count
+    }
+
+    private func contentHash(for url: URL) -> String? {
+        guard let handle = try? FileHandle(forReadingFrom: url) else { return nil }
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        while autoreleasepool(invoking: {
+            let data = try? handle.read(upToCount: 1024 * 1024)
+            guard let data, !data.isEmpty else { return false }
+            hasher.update(data: data)
+            return true
+        }) {}
+        return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
     private func sameFile(_ lhs: URL, _ rhs: URL) -> Bool {

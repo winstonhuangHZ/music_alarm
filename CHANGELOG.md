@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.16.0 - unreleased
+
+### Audio library health
+
+- Added SHA-256 content hashes to imported audio metadata.
+- Reuses an existing library item when the same audio content is imported again.
+- Added missing-file, duplicate-content, and orphaned-managed-file scanning.
+- Added safe cleanup for orphaned managed files and duplicate library records while preserving user-owned source files.
+
 ## 2.15.0 - unreleased
 
 ### Backup preview and conflict handling

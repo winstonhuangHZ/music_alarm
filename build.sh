@@ -65,6 +65,7 @@ compile_arch() {
         -framework SwiftUI \
         -framework AppKit \
         -framework AVFoundation \
+        -framework CryptoKit \
         -framework Combine \
         -o "$TMP_DIR/$APP_NAME-$arch" \
         "${SWIFT_FILES[@]}" 2>"$TMP_DIR/$arch.err"; then

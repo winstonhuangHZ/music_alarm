@@ -5,7 +5,6 @@ are removed after their version is committed and pushed.
 
 ## Remaining
 
-- [ ] Add orphaned-audio cleanup and content-hash duplicate detection.
 - [ ] Add reliability diagnostics, accessibility coverage, and UI automation tests.
 - [ ] Update release documentation after signing and notarization are configured.
 
@@ -54,6 +53,12 @@ are removed after their version is committed and pushed.
 
 - Added restore preview with validated counts and missing-audio information.
 - Added explicit replace or merge conflict handling for backup restoration.
+
+## Completed in 2.16.0
+
+- Added SHA-256 content hashes and duplicate-content detection for imported audio.
+- Added audio-library health scanning and cleanup for managed files without metadata.
+- Added duplicate library cleanup that rewrites alarm references before removing managed copies.
 
 ## Completed in 2.10.0
 
