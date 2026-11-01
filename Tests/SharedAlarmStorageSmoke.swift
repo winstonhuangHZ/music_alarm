@@ -31,6 +31,8 @@ struct SharedAlarmStorageSmoke {
             .appendingPathComponent("music-alarm-confirmation-\(UUID().uuidString)", isDirectory: true)
         let confirmationStorage = SharedAlarmStorage(rootURL: confirmationRoot)
         defer { try? FileManager.default.removeItem(at: confirmationRoot) }
+        AppSettings.shared.wakeConfirmationEnabled = true
+        AppSettings.shared.wakeConfirmationDeadlineMinutes = 30
         let confirmationStore = AlarmStore(storage: confirmationStorage)
         var confirmationAlarm = AlarmItem()
         confirmationAlarm.repeatType = .once
@@ -46,6 +48,9 @@ struct SharedAlarmStorageSmoke {
         confirmationStore.confirmWake(id: confirmationAlarm.id)
         precondition(!confirmationStore.alarms[0].isEnabled)
         precondition(confirmationStore.alarms[0].wakeConfirmationState == .confirmed)
+        precondition(confirmationStore.alarms[0].wakeStartedAt != nil)
+        precondition(confirmationStore.alarms[0].wakeStoppedAt != nil)
+        precondition(confirmationStore.alarms[0].wakeConfirmedAt != nil)
 
         let legacyAlarmJSON = """
         [{"hour":7,"minute":0,"repeatType":"Once","isEnabled":true,"tracks":[]}]

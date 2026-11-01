@@ -89,6 +89,13 @@ final class AlarmStore: ObservableObject {
                 NSLog("AlarmStore: preserved unreadable legacy alarm data; no empty migration was written")
             }
         }
+
+        // Preserve the behavior of pre-2.10 alarms that already opted into
+        // wake confirmation while making the feature explicitly controllable
+        // for new installations from Settings.
+        if alarms.contains(where: { $0.requiresWakeConfirmation }) {
+            AppSettings.shared.wakeConfirmationEnabled = true
+        }
     }
 
     func save() {
@@ -147,9 +154,25 @@ final class AlarmStore: ObservableObject {
             updated.snoozeUntil = nil
             updated.lastFiredKey = ""
             updated.wakeConfirmationState = .none
+            updated.wakeStartedAt = nil
+            updated.wakeStoppedAt = nil
+            updated.wakeConfirmedAt = nil
+            updated.wakeConfirmationDeadline = nil
         } else {
             updated.snoozeUntil = old.snoozeUntil
             updated.lastFiredKey = old.lastFiredKey
+            if old.requiresWakeConfirmation != alarm.requiresWakeConfirmation {
+                updated.wakeConfirmationState = .none
+                updated.wakeStartedAt = nil
+                updated.wakeStoppedAt = nil
+                updated.wakeConfirmedAt = nil
+                updated.wakeConfirmationDeadline = nil
+            } else {
+                updated.wakeStartedAt = old.wakeStartedAt
+                updated.wakeStoppedAt = old.wakeStoppedAt
+                updated.wakeConfirmedAt = old.wakeConfirmedAt
+                updated.wakeConfirmationDeadline = old.wakeConfirmationDeadline
+            }
         }
         alarms[idx] = updated
         persistAlarmsAfterUserChange()
@@ -176,8 +199,20 @@ final class AlarmStore: ObservableObject {
             alarms[index].lastFiredKey = AlarmTimeUtil.fireKey(for: occurrence)
         }
         alarms[index].snoozeUntil = nil
-        alarms[index].wakeConfirmationState = alarms[index].requiresWakeConfirmation ? .pending : .none
-        if alarms[index].repeatType == .once && !alarms[index].requiresWakeConfirmation {
+        let requiresConfirmation = alarms[index].requiresWakeConfirmation
+            && AppSettings.shared.wakeConfirmationEnabled
+        if requiresConfirmation {
+            let startedAt = Date()
+            alarms[index].wakeStartedAt = startedAt
+            alarms[index].wakeStoppedAt = nil
+            alarms[index].wakeConfirmedAt = nil
+            alarms[index].wakeConfirmationDeadline = AppSettings.shared.wakeConfirmationDeadlineMinutes
+                .flatMap { startedAt.addingTimeInterval(TimeInterval($0 * 60)) }
+            alarms[index].wakeConfirmationState = .pending
+        } else {
+            clearWakeConfirmationState(at: index)
+        }
+        if alarms[index].repeatType == .once && !requiresConfirmation {
             alarms[index].isEnabled = false
         }
         persistAlarmsAfterUserChange()
@@ -195,9 +230,10 @@ final class AlarmStore: ObservableObject {
     func stopAlarm(_ alarm: AlarmItem) {
         guard let idx = alarms.firstIndex(where: { $0.id == alarm.id }) else { return }
         alarms[idx].snoozeUntil = nil
-        if alarms[idx].requiresWakeConfirmation,
+        if alarms[idx].requiresWakeConfirmation && AppSettings.shared.wakeConfirmationEnabled,
            alarms[idx].wakeConfirmationState == .pending {
             alarms[idx].wakeConfirmationState = .stoppedWithoutConfirmation
+            alarms[idx].wakeStoppedAt = Date()
             // Keep a one-shot alarm enabled until the user explicitly confirms
             // the wake-up from the alarm row.
             persistAlarmsAfterUserChange()
@@ -211,12 +247,27 @@ final class AlarmStore: ObservableObject {
 
     func confirmWake(id: UUID) {
         guard let idx = alarms.firstIndex(where: { $0.id == id }),
-              alarms[idx].requiresWakeConfirmation else { return }
+              alarms[idx].requiresWakeConfirmation,
+              AppSettings.shared.wakeConfirmationEnabled else { return }
+        if let deadline = alarms[idx].wakeConfirmationDeadline, deadline < Date() {
+            alarms[idx].wakeConfirmationState = .expired
+            persistAlarmsAfterUserChange()
+            return
+        }
         alarms[idx].wakeConfirmationState = .confirmed
+        alarms[idx].wakeConfirmedAt = Date()
         if alarms[idx].repeatType == .once {
             alarms[idx].isEnabled = false
         }
         persistAlarmsAfterUserChange()
+    }
+
+    private func clearWakeConfirmationState(at index: Int) {
+        alarms[index].wakeConfirmationState = .none
+        alarms[index].wakeStartedAt = nil
+        alarms[index].wakeStoppedAt = nil
+        alarms[index].wakeConfirmedAt = nil
+        alarms[index].wakeConfirmationDeadline = nil
     }
 
     /// The soonest enabled alarm and its fire date.

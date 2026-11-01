@@ -18,6 +18,21 @@ struct SettingsView: View {
                         }
                     }
                 }
+                Toggle(L("Enable wake-up confirmation"), isOn: $settings.wakeConfirmationEnabled)
+                if settings.wakeConfirmationEnabled {
+                    Picker(L("Confirmation deadline"), selection: $settings.wakeConfirmationDeadlineMinutes) {
+                        Text(L("No deadline")).tag(Optional<Int>.none)
+                        Text(L("5 minutes")).tag(Optional(5))
+                        Text(L("10 minutes")).tag(Optional(10))
+                        Text(L("30 minutes")).tag(Optional(30))
+                        Text(L("60 minutes")).tag(Optional(60))
+                    }
+                    Picker(L("Confirmation method"), selection: $settings.wakeConfirmationMode) {
+                        ForEach(WakeConfirmationMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                }
                 if let error = settings.launchAtLoginError {
                     Text(error)
                         .font(.caption)

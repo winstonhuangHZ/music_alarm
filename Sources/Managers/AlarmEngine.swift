@@ -16,6 +16,7 @@ final class AlarmEngine: ObservableObject {
         let alarm: AlarmItem
         let occurrence: Date
         let isSnooze: Bool
+        let isTest: Bool
     }
 
     /// Index of the currently playing track (for sequential playlist support).
@@ -23,6 +24,7 @@ final class AlarmEngine: ObservableObject {
     private var currentCandidate: FireCandidate?
     private var pendingCandidates: [FireCandidate] = []
     private var claimedAlarmIDs = Set<UUID>()
+    private var maximumDurationTimer: Timer?
     private var wakeObserver: NSObjectProtocol?
     private var activeObserver: NSObjectProtocol?
 
@@ -75,12 +77,12 @@ final class AlarmEngine: ObservableObject {
 
     private func dueCandidate(for alarm: AlarmItem, now: Date, reason: TickReason) -> FireCandidate? {
         if let snooze = alarm.snoozeUntil, snooze <= now {
-            return FireCandidate(alarm: alarm, occurrence: snooze, isSnooze: true)
+            return FireCandidate(alarm: alarm, occurrence: snooze, isSnooze: true, isTest: false)
         }
         guard let occurrence = alarm.mostRecentOccurrence(at: now),
               shouldCatchUp(occurrence: occurrence, now: now, reason: reason),
               alarm.lastFiredKey != AlarmTimeUtil.fireKey(for: occurrence) else { return nil }
-        return FireCandidate(alarm: alarm, occurrence: occurrence, isSnooze: false)
+        return FireCandidate(alarm: alarm, occurrence: occurrence, isSnooze: false, isTest: false)
     }
 
     private func shouldCatchUp(occurrence: Date, now: Date, reason: TickReason) -> Bool {
@@ -116,6 +118,13 @@ final class AlarmEngine: ObservableObject {
         ringingAlarm = alarm
         currentTrackIndex = 0
         playCurrentTrack()
+        maximumDurationTimer?.invalidate()
+        if alarm.maximumPlaybackMinutes > 0 {
+            maximumDurationTimer = Timer.scheduledTimer(withTimeInterval: TimeInterval(alarm.maximumPlaybackMinutes * 60),
+                                                        repeats: false) { [weak self] _ in
+                self?.stopRinging()
+            }
+        }
         AlarmPopupController.show(
             alarm: alarm,
             onSnooze: { [weak self] _ in self?.snoozeRinging() },
@@ -137,7 +146,9 @@ final class AlarmEngine: ObservableObject {
                 if FileManager.default.fileExists(atPath: path),
                    audioManager.ring(url: URL(fileURLWithPath: path),
                                      name: track.displayName,
-                                     numberOfLoops: 0) {
+                                     numberOfLoops: 0,
+                                     fadeDuration: TimeInterval(alarm.fadeDurationSeconds),
+                                     targetVolume: Float(alarm.targetVolumePercent) / 100) {
                     markPlaybackStartedIfNeeded()
                     return
                 }
@@ -154,6 +165,7 @@ final class AlarmEngine: ObservableObject {
 
     private func markPlaybackStartedIfNeeded() {
         guard let candidate = currentCandidate,
+              !candidate.isTest,
               let liveAlarm = store.alarms.first(where: { $0.id == candidate.alarm.id }) else { return }
         if candidate.isSnooze || liveAlarm.lastFiredKey != AlarmTimeUtil.fireKey(for: candidate.occurrence) {
             store.markPlaybackStarted(id: candidate.alarm.id,
@@ -167,32 +179,62 @@ final class AlarmEngine: ObservableObject {
     func advanceToNextTrack() {
         guard ringingAlarm != nil else { return }
         currentTrackIndex += 1
+        if let alarm = ringingAlarm, currentTrackIndex >= alarm.tracks.count {
+            if alarm.loopsPlaylist {
+                currentTrackIndex = 0
+            } else {
+                audioManager.stop()
+                return
+            }
+        }
         playCurrentTrack()
+    }
+
+    /// Starts a non-persistent test session using the first enabled alarm with
+    /// a playable track, or the system fallback when none is available.
+    func testAlarm() {
+        guard currentCandidate == nil else { return }
+        let alarm = store.alarms.first(where: { $0.isEnabled && $0.hasSound })
+            ?? store.alarms.first
+            ?? AlarmItem()
+        currentCandidate = FireCandidate(alarm: alarm,
+                                          occurrence: Date(),
+                                          isSnooze: true,
+                                          isTest: true)
+        trigger(candidate: currentCandidate!)
     }
 
     // MARK: - User actions
 
     func stopRinging() {
-        if let alarm = ringingAlarm { store.stopAlarm(alarm) }
+        if let alarm = ringingAlarm, currentCandidate?.isTest != true {
+            store.stopAlarm(alarm)
+        }
         audioManager.stop()
         finishCurrent()
     }
 
     func snoozeRinging(minutes: Int = 5) {
         guard let alarm = ringingAlarm else { return }
-        store.snooze(alarm, minutes: minutes)
+        if currentCandidate?.isTest != true {
+            store.snooze(alarm, minutes: minutes)
+        }
         audioManager.stop()
         finishCurrent()
     }
 
     func confirmWake() {
         guard let alarm = ringingAlarm else { return }
-        store.confirmWake(id: alarm.id)
+        if currentCandidate?.isTest != true {
+            store.confirmWake(id: alarm.id)
+        }
         audioManager.stop()
         finishCurrent()
     }
 
     private func finishCurrent() {
+        maximumDurationTimer?.invalidate()
+        maximumDurationTimer = nil
         isRinging = false
         ringingAlarm = nil
         if let candidate = currentCandidate {

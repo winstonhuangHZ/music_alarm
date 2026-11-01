@@ -6,10 +6,7 @@ are removed after their version is committed and pushed.
 ## Remaining
 
 - [ ] Add skip-next and configurable snooze.
-- [ ] Add playback settings: fade, target volume, maximum duration, playlist behavior, and fallback choice.
-- [ ] Add a test alarm flow with playback, popup, stop, snooze, confirm, and fallback diagnostics.
-- [ ] Move wake confirmation into settings and add confirmation deadline/time records.
-- [ ] Add optional confirmation modes: button, short word, hold for 3 seconds, simple slide, and main-window confirmation.
+- [ ] Add fallback choice and detailed playback diagnostics.
 - [ ] Add occurrence history and explicit system time/timezone/DST handling.
 - [ ] Add cross-process storage locking or migrate shared data to SQLite transactions.
 - [ ] Add backup/export/import with audio files and restore preview.
@@ -32,3 +29,11 @@ are removed after their version is committed and pushed.
 - Optional copying of imported audio into the shared Music Alarm library.
 - Actual missing and undecodable audio states in the alarm editor.
 - `audioNeedsSelection` is recalculated from playable tracks when saving.
+
+## Completed in 2.10.0
+
+- Added per-alarm fade, target volume, maximum playback duration, and playlist loop settings.
+- Added a non-persistent Test Alarm flow using local audio or system fallback.
+- Added Settings controls for enabling wake confirmation, its deadline, and confirmation method.
+- Added wake start, stop, confirmation, and deadline timestamps.
+- Added button, short-word, hold, slide, and main-window confirmation interfaces.

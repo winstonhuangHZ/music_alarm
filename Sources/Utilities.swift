@@ -23,6 +23,17 @@ enum MissedAlarmPolicy: String, CaseIterable, Identifiable {
     }
 }
 
+enum WakeConfirmationMode: String, CaseIterable, Identifiable {
+    case button = "Button"
+    case shortWord = "Short word"
+    case hold = "Hold for 3 seconds"
+    case slide = "Slide to confirm"
+    case mainWindow = "Main window"
+
+    var id: String { rawValue }
+    var title: String { L(rawValue) }
+}
+
 /// Shared date / fire-key helpers used by the alarm engine and store.
 enum AlarmTimeUtil {
     static let fireFormatter: DateFormatter = {

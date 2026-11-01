@@ -16,6 +16,7 @@ enum WakeConfirmationState: String, Codable, Equatable {
     case pending = "Wake-up pending"
     case confirmed = "Wake-up confirmed"
     case stoppedWithoutConfirmation = "Wake-up not confirmed"
+    case expired = "Wake-up confirmation expired"
 }
 
 /// A single alarm. Persisted with JSON in the shared Application Support store.
@@ -31,6 +32,16 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     var weekdays: Set<Int> = []
     var requiresWakeConfirmation: Bool = false
     var wakeConfirmationState: WakeConfirmationState = .none
+    var wakeStartedAt: Date?
+    var wakeStoppedAt: Date?
+    var wakeConfirmedAt: Date?
+    var wakeConfirmationDeadline: Date?
+
+    var fadeDurationSeconds: Int = 20
+    var targetVolumePercent: Int = 85
+    /// Zero means no automatic maximum duration.
+    var maximumPlaybackMinutes: Int = 30
+    var loopsPlaylist: Bool = true
 
     // ---- v2.1 playlist model ----
     /// Ordered list of local audio tracks.
@@ -56,6 +67,8 @@ struct AlarmItem: Identifiable, Codable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case id, hour, minute, repeatType, isEnabled, label, scheduledDate, weekdays
         case requiresWakeConfirmation, wakeConfirmationState
+        case wakeStartedAt, wakeStoppedAt, wakeConfirmedAt, wakeConfirmationDeadline
+        case fadeDurationSeconds, targetVolumePercent, maximumPlaybackMinutes, loopsPlaylist
         case tracks, audioNeedsSelection
         case audioName, audioPath, soundSource, spotifyPlaylistURL
         case snoozeUntil, lastFiredKey
@@ -77,6 +90,14 @@ struct AlarmItem: Identifiable, Codable, Equatable {
         weekdays = try c.decodeIfPresent(Set<Int>.self, forKey: .weekdays) ?? []
         requiresWakeConfirmation = try c.decodeIfPresent(Bool.self, forKey: .requiresWakeConfirmation) ?? false
         wakeConfirmationState = try c.decodeIfPresent(WakeConfirmationState.self, forKey: .wakeConfirmationState) ?? .none
+        wakeStartedAt = try c.decodeIfPresent(Date.self, forKey: .wakeStartedAt)
+        wakeStoppedAt = try c.decodeIfPresent(Date.self, forKey: .wakeStoppedAt)
+        wakeConfirmedAt = try c.decodeIfPresent(Date.self, forKey: .wakeConfirmedAt)
+        wakeConfirmationDeadline = try c.decodeIfPresent(Date.self, forKey: .wakeConfirmationDeadline)
+        fadeDurationSeconds = try c.decodeIfPresent(Int.self, forKey: .fadeDurationSeconds) ?? 20
+        targetVolumePercent = try c.decodeIfPresent(Int.self, forKey: .targetVolumePercent) ?? 85
+        maximumPlaybackMinutes = try c.decodeIfPresent(Int.self, forKey: .maximumPlaybackMinutes) ?? 30
+        loopsPlaylist = try c.decodeIfPresent(Bool.self, forKey: .loopsPlaylist) ?? true
         tracks = try c.decodeIfPresent([AudioTrack].self, forKey: .tracks) ?? []
         audioNeedsSelection = try c.decodeIfPresent(Bool.self, forKey: .audioNeedsSelection) ?? false
         audioName = try c.decodeIfPresent(String.self, forKey: .audioName)

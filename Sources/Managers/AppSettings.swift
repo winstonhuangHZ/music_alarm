@@ -30,6 +30,20 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(missedAlarmPolicy.rawValue, forKey: Keys.missedAlarmPolicy) }
     }
 
+    @Published var wakeConfirmationEnabled: Bool {
+        didSet { UserDefaults.standard.set(wakeConfirmationEnabled, forKey: Keys.wakeConfirmationEnabled) }
+    }
+
+    @Published var wakeConfirmationDeadlineMinutes: Int? {
+        didSet {
+            UserDefaults.standard.set(wakeConfirmationDeadlineMinutes, forKey: Keys.wakeConfirmationDeadline)
+        }
+    }
+
+    @Published var wakeConfirmationMode: WakeConfirmationMode {
+        didSet { UserDefaults.standard.set(wakeConfirmationMode.rawValue, forKey: Keys.wakeConfirmationMode) }
+    }
+
     @Published private(set) var launchAtLoginError: String?
 
     private enum Keys {
@@ -38,6 +52,9 @@ final class AppSettings: ObservableObject {
         static let launchAtLogin = "MusicAlarm.launchAtLogin.v1"
         static let copyImportedAudio = "MusicAlarm.copyImportedAudio.v1"
         static let missedAlarmPolicy = "MusicAlarm.missedAlarmPolicy.v1"
+        static let wakeConfirmationEnabled = "MusicAlarm.wakeConfirmationEnabled.v1"
+        static let wakeConfirmationDeadline = "MusicAlarm.wakeConfirmationDeadline.v1"
+        static let wakeConfirmationMode = "MusicAlarm.wakeConfirmationMode.v1"
     }
 
     private init() {
@@ -45,6 +62,9 @@ final class AppSettings: ObservableObject {
         showMenuBarItem = UserDefaults.standard.object(forKey: Keys.showMenuBarItem) as? Bool ?? true
         copyImportedAudioToLibrary = UserDefaults.standard.object(forKey: Keys.copyImportedAudio) as? Bool ?? true
         missedAlarmPolicy = MissedAlarmPolicy(rawValue: UserDefaults.standard.string(forKey: Keys.missedAlarmPolicy) ?? "") ?? .twoHours
+        wakeConfirmationEnabled = UserDefaults.standard.object(forKey: Keys.wakeConfirmationEnabled) as? Bool ?? false
+        wakeConfirmationDeadlineMinutes = UserDefaults.standard.object(forKey: Keys.wakeConfirmationDeadline) as? Int ?? 30
+        wakeConfirmationMode = WakeConfirmationMode(rawValue: UserDefaults.standard.string(forKey: Keys.wakeConfirmationMode) ?? "") ?? .button
 
         if #available(macOS 13.0, *) {
             launchAtLogin = SMAppService.mainApp.status == .enabled

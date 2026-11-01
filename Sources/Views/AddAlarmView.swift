@@ -5,6 +5,7 @@ import SwiftUI
 struct AddAlarmView: View {
     @EnvironmentObject var store: AlarmStore
     @Environment(\.presentationMode) private var presentationMode
+    @ObservedObject private var settings = AppSettings.shared
 
     private let editingAlarm: AlarmItem?
 
@@ -20,6 +21,10 @@ struct AddAlarmView: View {
     @State private var selectedAudioID: UUID?
     @State private var audioNeedsSelection = false
     @State private var requiresWakeConfirmation = false
+    @State private var fadeDurationSeconds = 20
+    @State private var targetVolumePercent = 85
+    @State private var maximumPlaybackMinutes = 30
+    @State private var loopsPlaylist = true
 
     init(alarm: AlarmItem? = nil) {
         self.editingAlarm = alarm
@@ -38,6 +43,10 @@ struct AddAlarmView: View {
             _tracks = State(initialValue: alarm.tracks)
             _audioNeedsSelection = State(initialValue: alarm.tracks.isEmpty || !alarm.tracks.contains(where: \.isPlayable))
             _requiresWakeConfirmation = State(initialValue: alarm.requiresWakeConfirmation)
+            _fadeDurationSeconds = State(initialValue: alarm.fadeDurationSeconds)
+            _targetVolumePercent = State(initialValue: alarm.targetVolumePercent)
+            _maximumPlaybackMinutes = State(initialValue: alarm.maximumPlaybackMinutes)
+            _loopsPlaylist = State(initialValue: alarm.loopsPlaylist)
         } else {
             comps.hour = 7
             comps.minute = 0
@@ -78,14 +87,22 @@ struct AddAlarmView: View {
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Toggle(isOn: $requiresWakeConfirmation) {
-                    Text(L("Require wake-up confirmation"))
-                        .font(.headline)
+                if settings.wakeConfirmationEnabled {
+                    Toggle(isOn: $requiresWakeConfirmation) {
+                        Text(L("Require wake-up confirmation"))
+                            .font(.headline)
+                    }
+                    Text(L("You can stop the sound, but the alarm stays unconfirmed until you say you are really awake."))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text(L("Wake-up confirmation is disabled in Settings."))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
-                Text(L("You can stop the sound, but the alarm stays unconfirmed until you say you are really awake."))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
             }
+
+            playbackSection
 
             playlistSection
 
@@ -134,6 +151,40 @@ struct AddAlarmView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
             addLocalTrack
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+        )
+    }
+
+    private var playbackSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L("Playback settings"))
+                .font(.headline)
+            Picker(L("Fade in"), selection: $fadeDurationSeconds) {
+                Text(L("No fade")).tag(0)
+                Text(L("5 seconds")).tag(5)
+                Text(L("10 seconds")).tag(10)
+                Text(L("20 seconds")).tag(20)
+                Text(L("30 seconds")).tag(30)
+                Text(L("60 seconds")).tag(60)
+            }
+            Picker(L("Target volume"), selection: $targetVolumePercent) {
+                ForEach([50, 65, 75, 85, 100], id: \.self) { value in
+                    Text("\(value)%").tag(value)
+                }
+            }
+            Picker(L("Maximum playback"), selection: $maximumPlaybackMinutes) {
+                Text(L("Until stopped")).tag(0)
+                Text(L("5 minutes")).tag(5)
+                Text(L("15 minutes")).tag(15)
+                Text(L("30 minutes")).tag(30)
+                Text(L("60 minutes")).tag(60)
+                Text(L("120 minutes")).tag(120)
+            }
+            Toggle(L("Loop the playlist"), isOn: $loopsPlaylist)
         }
         .padding(12)
         .background(
@@ -369,7 +420,11 @@ struct AddAlarmView: View {
         alarm.weekdays = repeatType == .custom ? selectedWeekdays : []
         alarm.tracks = tracks
         alarm.audioNeedsSelection = tracks.isEmpty || !tracks.contains(where: \.isPlayable)
-        alarm.requiresWakeConfirmation = requiresWakeConfirmation
+        alarm.requiresWakeConfirmation = settings.wakeConfirmationEnabled && requiresWakeConfirmation
+        alarm.fadeDurationSeconds = fadeDurationSeconds
+        alarm.targetVolumePercent = targetVolumePercent
+        alarm.maximumPlaybackMinutes = maximumPlaybackMinutes
+        alarm.loopsPlaylist = loopsPlaylist
 
         if editingAlarm != nil {
             store.updateAlarm(alarm)

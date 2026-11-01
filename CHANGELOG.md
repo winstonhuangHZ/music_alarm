@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.10.0 - unreleased
+
+### Playback and wake confirmation
+
+- Added per-alarm fade, target volume, maximum playback duration, and playlist loop settings.
+- Added a non-persistent Test Alarm flow using local audio or system fallback.
+- Added Settings controls for enabling wake confirmation, its deadline, and confirmation method.
+- Added wake start, stop, confirmation, and deadline timestamps.
+- Added button, short-word, hold, slide, and main-window confirmation interfaces.
+
 ## 2.9.0 - unreleased
 
 ### Scheduling and audio state

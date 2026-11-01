@@ -8,6 +8,7 @@ import AppKit
 struct ContentView: View {
     @EnvironmentObject var store: AlarmStore
     @EnvironmentObject var audioManager: AudioManager
+    @EnvironmentObject var engine: AlarmEngine
     @EnvironmentObject var languageManager: LanguageManager
 
     @State private var showAddAlarm = false
@@ -173,6 +174,13 @@ struct ContentView: View {
         HStack {
             languagePicker
             Spacer()
+            Button(action: { self.engine.testAlarm() }) {
+                HStack(spacing: 6) {
+                    Text("🔊")
+                    Text(L("Test Alarm"))
+                }
+            }
+            .buttonStyle(BorderedButtonStyle())
             Button(action: { self.showNewAlarm() }) {
                 HStack(spacing: 8) {
                     Text("➕")

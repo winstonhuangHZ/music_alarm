@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// The high-level popup shown while an alarm is ringing, with Snooze / Stop.
 struct AlarmPopupView: View {
@@ -6,9 +7,13 @@ struct AlarmPopupView: View {
     let onSnooze: (AlarmItem) -> Void
     let onStop: (AlarmItem) -> Void
     let onConfirmWake: (AlarmItem) -> Void
+    @ObservedObject private var settings = AppSettings.shared
 
     @State private var appeared = false
     @State private var pulse = false
+    @State private var confirmationInput = ""
+    @State private var slideProgress = 0.0
+    @State private var gestureCompleted = false
 
     var body: some View {
         popupCard
@@ -123,20 +128,8 @@ struct AlarmPopupView: View {
 
     private var actionButtons: some View {
         VStack(spacing: 10) {
-            if alarm.requiresWakeConfirmation {
-                Button(action: { self.onConfirmWake(self.alarm) }) {
-                    HStack(spacing: 8) {
-                        Text("✅")
-                        Text(L("I am really awake"))
-                    }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 9)
-                    .background(Color.green)
-                    .cornerRadius(9)
-                }
-                .buttonStyle(PlainButtonStyle())
+            if alarm.requiresWakeConfirmation && settings.wakeConfirmationEnabled {
+                confirmationControl
             }
 
             HStack(spacing: 18) {
@@ -171,5 +164,85 @@ struct AlarmPopupView: View {
         }
         .opacity(appeared ? 1 : 0)
         .scaleEffect(appeared ? 1 : 0.9)
+    }
+
+    @ViewBuilder
+    private var confirmationControl: some View {
+        switch settings.wakeConfirmationMode {
+        case .button:
+            confirmationButton
+        case .shortWord:
+            VStack(spacing: 6) {
+                TextField(L("Type AWAKE to confirm"), text: $confirmationInput)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                confirmationButton
+                    .disabled(confirmationInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != "awake")
+            }
+        case .hold:
+            Button(action: {}) {
+                HStack(spacing: 8) {
+                    Text("✅")
+                    Text(L("Hold for 3 seconds"))
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .background(Color.green)
+                .cornerRadius(9)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .onLongPressGesture(minimumDuration: 3) {
+                guard !gestureCompleted else { return }
+                gestureCompleted = true
+                onConfirmWake(alarm)
+            }
+        case .slide:
+            VStack(spacing: 5) {
+                Text(L("Slide to confirm"))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Slider(value: $slideProgress, in: 0...1, onEditingChanged: { editing in
+                    if !editing && slideProgress >= 0.99 && !gestureCompleted {
+                        gestureCompleted = true
+                        onConfirmWake(alarm)
+                    }
+                })
+            }
+        case .mainWindow:
+            Button(action: {
+                AlarmPopupController.dismiss()
+                NSApp.windows.first(where: { $0.title == "Music Alarm" })?.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+            }) {
+                HStack(spacing: 8) {
+                    Text("🪟")
+                    Text(L("Confirm from the main window"))
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 9)
+                .background(Color.green)
+                .cornerRadius(9)
+            }
+            .buttonStyle(PlainButtonStyle())
+        }
+    }
+
+    private var confirmationButton: some View {
+        Button(action: { self.onConfirmWake(self.alarm) }) {
+            HStack(spacing: 8) {
+                Text("✅")
+                Text(L("I am really awake"))
+            }
+            .font(.headline)
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 9)
+            .background(Color.green)
+            .cornerRadius(9)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }

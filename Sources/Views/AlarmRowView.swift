@@ -6,6 +6,7 @@ struct AlarmRowView: View {
     @EnvironmentObject var store: AlarmStore
     @EnvironmentObject var audioManager: AudioManager
     @EnvironmentObject var languageManager: LanguageManager
+    @ObservedObject private var settings = AppSettings.shared
 
     let alarm: AlarmItem
     let onEdit: (AlarmItem) -> Void
@@ -32,13 +33,16 @@ struct AlarmRowView: View {
                             .font(.caption)
                             .foregroundColor(.orange)
                     }
-                    if alarm.requiresWakeConfirmation {
+                    if alarm.requiresWakeConfirmation && settings.wakeConfirmationEnabled {
                         Text(wakeConfirmationLabel)
                             .font(.caption)
                             .foregroundColor(wakeConfirmationColor)
                     }
                 }
                 .foregroundColor(.secondary)
+                if alarm.requiresWakeConfirmation && settings.wakeConfirmationEnabled {
+                    wakeTimingView
+                }
             }
 
             Spacer()
@@ -59,7 +63,7 @@ struct AlarmRowView: View {
             }
             .buttonStyle(PlainButtonStyle())
 
-            if alarm.requiresWakeConfirmation && isAwaitingWakeConfirmation {
+            if alarm.requiresWakeConfirmation && settings.wakeConfirmationEnabled && isAwaitingWakeConfirmation {
                 Button(action: { self.store.confirmWake(id: self.alarm.id) }) {
                     Text(L("Confirm wake-up"))
                         .font(.caption)
@@ -146,6 +150,7 @@ struct AlarmRowView: View {
         case .pending: return L("• Wake-up pending")
         case .confirmed: return L("• Wake-up confirmed")
         case .stoppedWithoutConfirmation: return L("• Wake-up not confirmed")
+        case .expired: return L("• Wake-up confirmation expired")
         }
     }
 
@@ -153,7 +158,36 @@ struct AlarmRowView: View {
         switch alarm.wakeConfirmationState {
         case .confirmed: return .green
         case .pending, .stoppedWithoutConfirmation: return .orange
+        case .expired: return .red
         case .none: return .secondary
         }
+    }
+
+    private var wakeTimingView: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            if let started = alarm.wakeStartedAt {
+                Text(String(format: L("Started %@"), formatTime(started)))
+            }
+            if let stopped = alarm.wakeStoppedAt {
+                Text(String(format: L("Stopped %@"), formatTime(stopped)))
+            }
+            if let confirmed = alarm.wakeConfirmedAt {
+                Text(String(format: L("Confirmed %@"), formatTime(confirmed)))
+            }
+            if let deadline = alarm.wakeConfirmationDeadline,
+               alarm.wakeConfirmedAt == nil,
+               alarm.wakeConfirmationState != .expired {
+                Text(String(format: L("Confirm by %@"), formatTime(deadline)))
+            }
+        }
+        .font(.caption2)
+        .foregroundColor(.secondary)
+    }
+
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        formatter.dateStyle = .none
+        return formatter.string(from: date)
     }
 }

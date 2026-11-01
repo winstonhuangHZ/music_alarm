@@ -50,7 +50,8 @@ final class AudioManager: NSObject, ObservableObject {
             return false
         }
         isRinging = true
-        p.volume = 0
+        let safeTargetVolume = min(max(targetVolume, 0), 1)
+        p.volume = fadeDuration > 0 ? 0 : safeTargetVolume
         p.numberOfLoops = numberOfLoops
         guard p.play() else {
             stop()
@@ -60,7 +61,9 @@ final class AudioManager: NSObject, ObservableObject {
         currentURL = url
         nowPlayingName = name
         isPlaying = true
-        startFade(to: targetVolume, duration: fadeDuration)
+        if fadeDuration > 0 {
+            startFade(to: safeTargetVolume, duration: fadeDuration)
+        }
         return true
     }
 
