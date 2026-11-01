@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.20.2 - unreleased
+
+### Playlist layout
+
+- Made the alarm editor content vertically scrollable while keeping Cancel and Save actions visible.
+- Removed the nested playlist scroller so track rows keep their height and the outer form handles long playlists.
+
 ## 2.20.1 - unreleased
 
 ### Application icon loading fix

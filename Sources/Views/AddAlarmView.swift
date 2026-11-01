@@ -58,55 +58,62 @@ struct AddAlarmView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text(editingAlarm == nil ? L("Add Alarm") : L("Edit Alarm"))
-                .font(.system(size: 26, weight: .bold))
+        VStack(alignment: .leading, spacing: 12) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text(editingAlarm == nil ? L("Add Alarm") : L("Edit Alarm"))
+                        .font(.system(size: 26, weight: .bold))
 
-            if repeatType == .once {
-                DatePicker(L("Date and time"), selection: $scheduledDate, displayedComponents: [.date, .hourAndMinute])
-            } else {
-                HStack(spacing: 16) {
-                    DatePicker(L("Time"), selection: $selectedTime, displayedComponents: .hourAndMinute)
-                        .labelsHidden()
-                    Spacer()
-                }
-            }
-
-            TextField(L("Label"), text: $label)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text(L("Repeat"))
-                    .font(.headline)
-                Picker(selection: $repeatType, label: Text(L("Repeat"))) {
-                    ForEach(RepeatType.allCases) { type in
-                        Text(type.title).tag(type)
+                    if repeatType == .once {
+                        DatePicker(L("Date and time"), selection: $scheduledDate, displayedComponents: [.date, .hourAndMinute])
+                    } else {
+                        HStack(spacing: 16) {
+                            DatePicker(L("Time"), selection: $selectedTime, displayedComponents: .hourAndMinute)
+                                .labelsHidden()
+                            Spacer()
+                        }
                     }
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                if repeatType == .custom {
-                    weekdayPicker
-                }
-            }
 
-            VStack(alignment: .leading, spacing: 5) {
-                if settings.wakeConfirmationEnabled {
-                    Toggle(isOn: $requiresWakeConfirmation) {
-                        Text(L("Require wake-up confirmation"))
+                    TextField(L("Label"), text: $label)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(L("Repeat"))
                             .font(.headline)
+                        Picker(selection: $repeatType, label: Text(L("Repeat"))) {
+                            ForEach(RepeatType.allCases) { type in
+                                Text(type.title).tag(type)
+                            }
+                        }
+                        .pickerStyle(SegmentedPickerStyle())
+                        if repeatType == .custom {
+                            weekdayPicker
+                        }
                     }
-                    Text(L("You can stop the sound, but the alarm stays unconfirmed until you say you are really awake."))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                } else {
-                    Text(L("Wake-up confirmation is disabled in Settings."))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        if settings.wakeConfirmationEnabled {
+                            Toggle(isOn: $requiresWakeConfirmation) {
+                                Text(L("Require wake-up confirmation"))
+                                    .font(.headline)
+                            }
+                            Text(L("You can stop the sound, but the alarm stays unconfirmed until you say you are really awake."))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            Text(L("Wake-up confirmation is disabled in Settings."))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    playbackSection
+
+                    playlistSection
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.trailing, 4)
             }
-
-            playbackSection
-
-            playlistSection
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             HStack {
                 Spacer()
@@ -127,7 +134,7 @@ struct AddAlarmView: View {
             }
         }
         .padding(24)
-        .frame(width: 480)
+        .frame(width: 480, height: 640)
     }
 
     // MARK: - Playlist builder section
@@ -205,15 +212,12 @@ struct AddAlarmView: View {
     // MARK: - Track list
 
     private var trackList: some View {
-        ScrollView {
-            VStack(spacing: 8) {
-                ForEach(Array(tracks.enumerated()), id: \.offset) { idx, track in
-                    self.trackRow(track, at: idx)
-                }
+        VStack(spacing: 8) {
+            ForEach(Array(tracks.enumerated()), id: \.offset) { idx, track in
+                self.trackRow(track, at: idx)
             }
-            .padding(4)
         }
-        .frame(maxHeight: 150)
+        .padding(4)
     }
 
     /// One editable row in the playlist: icon + name + reorder/remove buttons.
@@ -263,6 +267,7 @@ struct AddAlarmView: View {
         return row
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
+            .frame(minHeight: 36)
             .background(
                 RoundedRectangle(cornerRadius: 6)
                     .fill(Color(NSColor.controlBackgroundColor))
