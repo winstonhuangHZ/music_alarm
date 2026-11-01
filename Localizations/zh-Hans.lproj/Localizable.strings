@@ -37,9 +37,9 @@
 "Stop" = "停止";
 "Music Library" = "音乐库";
 "Import Music" = "导入音乐";
-"No music imported. Click “Import Music” to add .mp3 / .m4a files." = "尚未导入音乐。点击“导入音乐”添加 .mp3 / .m4a 文件。";
+"No music imported. Click “Import Music” to add a supported local audio file." = "尚未导入音乐。点击“导入音乐”添加支持的本地音频文件。";
 "Import" = "导入";
-"Select an .mp3 or .m4a audio file" = "选择一个 .mp3 或 .m4a 音频文件";
+"Select a supported local audio file" = "选择一个支持的本地音频文件";
 "About Music Alarm" = "关于 Music Alarm";
 "Hide Music Alarm" = "隐藏 Music Alarm";
 "Quit Music Alarm" = "退出 Music Alarm";
@@ -248,3 +248,16 @@
 "Scheduler" = "调度器";
 "The scheduler has checked the current system time and is active." = "调度器已检查当前系统时间，正在运行。";
 "The scheduler has not reported an event yet." = "调度器尚未报告事件。";
+
+
+/* Playback and staged wake-up */
+"In order" = "按顺序";
+"Shuffle" = "随机播放";
+"Repeat one" = "单曲循环";
+"Playback order" = "播放顺序";
+"Staged wake-up" = "分阶段唤醒";
+"Set the volume and fade for each track. The alarm moves through the playlist using these stages." = "为每首音轨设置音量和渐入，闹钟会按这些阶段播放列表。";
+"Shuffle chooses a different track after each song; Repeat one keeps the current song playing." = "随机播放会在每首歌结束后选择另一首；单曲循环会继续播放当前歌曲。";
+"Volume" = "音量";
+"Wake-up confirmed" = "已确认起床";
+"Playback progress" = "播放进度";

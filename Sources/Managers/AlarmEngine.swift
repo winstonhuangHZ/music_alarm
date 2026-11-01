@@ -22,6 +22,7 @@ final class AlarmEngine: ObservableObject {
 
     /// Index of the currently playing track (for sequential playlist support).
     private var currentTrackIndex: Int = 0
+    private var playedTrackIndices = Set<Int>()
     private var currentCandidate: FireCandidate?
     private var currentOccurrenceID: UUID?
     private var pendingCandidates: [FireCandidate] = []
@@ -141,6 +142,7 @@ final class AlarmEngine: ObservableObject {
         isRinging = true
         ringingAlarm = alarm
         currentTrackIndex = 0
+        playedTrackIndices = []
         currentOccurrenceID = nil
         guard playCurrentTrack() else {
             finishCurrent()
@@ -172,15 +174,25 @@ final class AlarmEngine: ObservableObject {
 
         while currentTrackIndex < tracks.count {
             let track = tracks[currentTrackIndex]
+            let trackSettings = alarm.trackPlaybackSettings.indices.contains(currentTrackIndex)
+                ? alarm.trackPlaybackSettings[currentTrackIndex]
+                : TrackPlaybackSettings(volumePercent: alarm.targetVolumePercent,
+                                        fadeDurationSeconds: alarm.fadeDurationSeconds)
+            let volumePercent = alarm.stagedWakeEnabled
+                ? trackSettings.clampedVolumePercent
+                : alarm.targetVolumePercent
+            let fadeDuration = alarm.stagedWakeEnabled
+                ? trackSettings.clampedFadeDurationSeconds
+                : alarm.fadeDurationSeconds
             switch track {
             case .local(_, let path, _):
                 attemptedTracks.append(track.displayName)
                 if FileManager.default.fileExists(atPath: path),
                    audioManager.ring(url: URL(fileURLWithPath: path),
                                      name: track.displayName,
-                                     numberOfLoops: 0,
-                                     fadeDuration: TimeInterval(alarm.fadeDurationSeconds),
-                                     targetVolume: Float(alarm.targetVolumePercent) / 100) {
+                                     numberOfLoops: alarm.playlistPlaybackMode == .repeatOne && alarm.loopsPlaylist ? -1 : 0,
+                                     fadeDuration: TimeInterval(fadeDuration),
+                                     targetVolume: Float(volumePercent) / 100) {
                     markPlaybackStartedIfNeeded(usedFallback: false,
                                                 attemptedTracks: attemptedTracks)
                     return true
@@ -233,7 +245,31 @@ final class AlarmEngine: ObservableObject {
     func advanceToNextTrack() {
         guard let alarm = ringingAlarm, currentCandidate != nil else { return }
 
-        let nextIndex = currentTrackIndex + 1
+        if alarm.playlistPlaybackMode == .repeatOne {
+            guard alarm.loopsPlaylist else {
+                stopRinging()
+                return
+            }
+            _ = playCurrentTrack()
+            return
+        }
+
+        let nextIndex: Int
+        if alarm.playlistPlaybackMode == .shuffle, alarm.tracks.count > 1 {
+            playedTrackIndices.insert(currentTrackIndex)
+            let remaining = alarm.tracks.indices.filter { !playedTrackIndices.contains($0) }
+            if let shuffledNext = remaining.randomElement() {
+                nextIndex = shuffledNext
+            } else if alarm.loopsPlaylist {
+                playedTrackIndices = []
+                nextIndex = alarm.tracks.indices.filter { $0 != currentTrackIndex }.randomElement() ?? currentTrackIndex
+            } else {
+                stopRinging()
+                return
+            }
+        } else {
+            nextIndex = currentTrackIndex + 1
+        }
         if nextIndex >= alarm.tracks.count {
             guard alarm.loopsPlaylist else {
                 stopRinging()

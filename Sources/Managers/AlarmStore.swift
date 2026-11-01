@@ -538,7 +538,7 @@ final class AlarmStore: ObservableObject {
         let panel = NSOpenPanel()
         panel.title = L("Import Music")
         panel.prompt = L("Import")
-        panel.message = L("Select an .mp3 or .m4a audio file")
+        panel.message = L("Select a supported local audio file")
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.canChooseFiles = true

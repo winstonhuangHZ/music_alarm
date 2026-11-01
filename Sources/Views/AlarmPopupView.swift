@@ -14,6 +14,9 @@ struct AlarmPopupView: View {
     @State private var confirmationInput = ""
     @State private var slideProgress = 0.0
     @State private var gestureCompleted = false
+    @State private var holdProgress = 0.0
+    @State private var holdStartedAt: Date?
+    @State private var holdTimer: Timer?
 
     var body: some View {
         popupCard
@@ -222,32 +225,82 @@ struct AlarmPopupView: View {
     /// gesture on Button. On macOS, Button's click recognizer can consume the
     /// gesture before LongPressGesture reaches its minimum duration.
     private var holdConfirmationControl: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "checkmark.circle.fill")
-            Text(L("Hold for 3 seconds"))
+        VStack(spacing: 6) {
+            HStack(spacing: 8) {
+                Image(systemName: gestureCompleted ? "checkmark.circle.fill" : "hand.tap.fill")
+                Text(gestureCompleted ? L("Wake-up confirmed") : L("Hold for 3 seconds"))
+                if holdStartedAt != nil && !gestureCompleted {
+                    Text(String(format: "%.1f / 3.0", holdProgress * 3))
+                        .font(.caption.monospacedDigit())
+                        .opacity(0.85)
+                }
+            }
+            if !gestureCompleted {
+                ProgressView(value: holdProgress)
+                    .progressViewStyle(.linear)
+                    .accentColor(.white)
+                    .frame(maxWidth: 260)
+            }
         }
         .font(.headline)
         .foregroundColor(.white)
         .frame(maxWidth: .infinity)
         .padding(.vertical, 9)
-        .background(Color.green)
+        .background(gestureCompleted ? Color.green.opacity(0.75) : Color.green)
         .cornerRadius(9)
         .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         .gesture(
             LongPressGesture(minimumDuration: 3, maximumDistance: 30)
                 .onEnded { _ in
-                    guard !gestureCompleted else { return }
-                    gestureCompleted = true
-                    onConfirmWake(alarm)
+                    stopHoldTracking(completed: true)
+                }
+        )
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { value in
+                    if holdStartedAt == nil {
+                        holdStartedAt = Date()
+                        startHoldTracking()
+                    }
+                    if abs(value.translation.width) > 30 || abs(value.translation.height) > 30 {
+                        stopHoldTracking(completed: false)
+                    }
+                }
+                .onEnded { _ in
+                    if !gestureCompleted && holdProgress < 1 {
+                        stopHoldTracking(completed: false)
+                    }
                 }
         )
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(L("Hold for 3 seconds"))
         .accessibilityAction {
-            guard !gestureCompleted else { return }
+            stopHoldTracking(completed: true)
+        }
+    }
+
+    private func startHoldTracking() {
+        holdTimer?.invalidate()
+        holdTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { timer in
+            guard let started = holdStartedAt else {
+                timer.invalidate()
+                return
+            }
+            holdProgress = min(max(Date().timeIntervalSince(started) / 3, 0), 1)
+        }
+    }
+
+    private func stopHoldTracking(completed: Bool) {
+        holdTimer?.invalidate()
+        holdTimer = nil
+        if completed && !gestureCompleted {
             gestureCompleted = true
+            holdProgress = 1
             onConfirmWake(alarm)
+        } else if !completed {
+            holdStartedAt = nil
+            holdProgress = 0
         }
     }
 

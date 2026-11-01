@@ -148,7 +148,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if appSettings.showMenuBarItem {
             if statusItem == nil {
                 let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-                item.button?.image = NSImage(systemSymbolName: "alarm.fill", accessibilityDescription: L("Music Alarm"))
+                if #available(macOS 11.0, *) {
+                    item.button?.image = NSImage(systemSymbolName: "alarm.fill", accessibilityDescription: L("Music Alarm"))
+                } else {
+                    item.button?.title = "⏰"
+                }
                 item.button?.imagePosition = .imageOnly
                 let menu = NSMenu()
                 menu.addItem(withTitle: L("Open Music Alarm"),

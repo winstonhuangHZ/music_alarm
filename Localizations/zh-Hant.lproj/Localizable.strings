@@ -248,3 +248,21 @@
 "Scheduler" = "调度器";
 "The scheduler has checked the current system time and is active." = "调度器已检查当前系统时间，正在运行。";
 "The scheduler has not reported an event yet." = "调度器尚未报告事件。";
+
+
+/* Playback and staged wake-up */
+"In order" = "按顺序";
+"Shuffle" = "随机播放";
+"Repeat one" = "单曲循环";
+"Playback order" = "播放顺序";
+"Staged wake-up" = "分阶段唤醒";
+"Set the volume and fade for each track. The alarm moves through the playlist using these stages." = "为每首音轨设置音量和渐入，闹钟会按这些阶段播放列表。";
+"Shuffle chooses a different track after each song; Repeat one keeps the current song playing." = "随机播放会在每首歌结束后选择另一首；单曲循环会继续播放当前歌曲。";
+"Volume" = "音量";
+"Wake-up confirmed" = "已确认起床";
+"Playback progress" = "播放进度";
+
+
+/* Expanded local audio format support */
+"No music imported. Click “Import Music” to add a supported local audio file." = "尚未匯入音樂。點擊「匯入音樂」加入支援的本機音訊檔案。";
+"Select a supported local audio file" = "選擇支援的本機音訊檔案";

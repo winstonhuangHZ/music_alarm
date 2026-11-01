@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.23.0 - unreleased
+
+### Music playback and staged wake-up
+
+- Added sequential, shuffle, and repeat-one playback modes with correct loop and stop behavior.
+- Added live playback progress and duration feedback to the music library bar.
+- Added support for additional local audio extensions: AAC, WAV, AIFF, and AIF, with decode validation before import.
+- Added an Advanced staged wake-up section where each playlist track can have its own volume and fade-in duration.
+
 ## 2.22.0 - unreleased
 
 ### Reliability center

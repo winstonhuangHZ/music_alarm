@@ -23,14 +23,22 @@ struct AudioBarView: View {
             }
             Spacer()
             if let currentName = currentPreviewName {
-                HStack(spacing: 5) {
-                    Image(systemName: "speaker.wave.2.fill")
-                    Text(currentName)
-                        .font(.caption)
-                        .lineLimit(1)
+                VStack(alignment: .trailing, spacing: 3) {
+                    HStack(spacing: 5) {
+                        Image(systemName: "speaker.wave.2.fill")
+                        Text(currentName)
+                            .font(.caption)
+                            .lineLimit(1)
+                    }
+                    if audioManager.playbackDuration > 0 {
+                        ProgressView(value: audioManager.playbackProgress)
+                            .progressViewStyle(.linear)
+                            .frame(width: 130)
+                            .accessibilityLabel(L("Playback progress"))
+                    }
                 }
                 .foregroundColor(.accentColor)
-                .frame(maxWidth: 180, alignment: .trailing)
+                .frame(maxWidth: 190, alignment: .trailing)
             }
             Button(action: { store.importAudio() }) {
                 Image(systemName: "plus")
@@ -55,7 +63,7 @@ struct AudioBarView: View {
 
     private var librarySummary: String {
         if store.importedAudios.isEmpty {
-            return L("No music imported. Click “Import Music” to add .mp3 / .m4a files.")
+            return L("No music imported. Click “Import Music” to add a supported local audio file.")
         }
         return String(format: L("%d tracks"), store.importedAudios.count)
     }
@@ -141,7 +149,7 @@ struct MusicLibraryPanel: View {
             Spacer()
             Image(systemName: "music.note.list")
                 .font(.system(size: 34, weight: .medium))
-            Text(L("No music imported. Click “Import Music” to add .mp3 / .m4a files."))
+            Text(L("No music imported. Click “Import Music” to add a supported local audio file."))
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)

@@ -37,9 +37,9 @@
 "Stop" = "Stop";
 "Music Library" = "Music Library";
 "Import Music" = "Import Music";
-"No music imported. Click “Import Music” to add .mp3 / .m4a files." = "No music imported. Click “Import Music” to add .mp3 / .m4a files.";
+"No music imported. Click “Import Music” to add a supported local audio file." = "No music imported. Click “Import Music” to add a supported local audio file.";
 "Import" = "Import";
-"Select an .mp3 or .m4a audio file" = "Select an .mp3 or .m4a audio file";
+"Select a supported local audio file" = "Select a supported local audio file";
 "About Music Alarm" = "About Music Alarm";
 "Hide Music Alarm" = "Hide Music Alarm";
 "Quit Music Alarm" = "Quit Music Alarm";
@@ -248,3 +248,16 @@
 "Scheduler" = "Scheduler";
 "The scheduler has checked the current system time and is active." = "The scheduler has checked the current system time and is active.";
 "The scheduler has not reported an event yet." = "The scheduler has not reported an event yet.";
+
+
+/* Playback and staged wake-up */
+"In order" = "In order";
+"Shuffle" = "Shuffle";
+"Repeat one" = "Repeat one";
+"Playback order" = "Playback order";
+"Staged wake-up" = "Staged wake-up";
+"Set the volume and fade for each track. The alarm moves through the playlist using these stages." = "Set the volume and fade for each track. The alarm moves through the playlist using these stages.";
+"Shuffle chooses a different track after each song; Repeat one keeps the current song playing." = "Shuffle chooses a different track after each song; Repeat one keeps the current song playing.";
+"Volume" = "Volume";
+"Wake-up confirmed" = "Wake-up confirmed";
+"Playback progress" = "Playback progress";

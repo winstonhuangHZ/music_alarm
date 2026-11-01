@@ -8,6 +8,8 @@ final class AudioManager: NSObject, ObservableObject {
     @Published private(set) var isPlaying = false
     @Published private(set) var currentURL: URL?
     @Published private(set) var nowPlayingName: String?
+    @Published private(set) var playbackProgress: Double = 0
+    @Published private(set) var playbackDuration: TimeInterval = 0
     private(set) var lastPlaybackError: String?
 
     /// Called when a local track finishes during alarm ringing (for
@@ -16,6 +18,7 @@ final class AudioManager: NSObject, ObservableObject {
 
     private var player: AVAudioPlayer?
     private var fadeTimer: Timer?
+    private var progressTimer: Timer?
     private var isRinging = false
     private var fallbackSound: NSSound?
 
@@ -39,6 +42,7 @@ final class AudioManager: NSObject, ObservableObject {
         currentURL = url
         nowPlayingName = name
         isPlaying = true
+        startProgressUpdates()
     }
 
     // MARK: - Alarm ringing
@@ -63,6 +67,7 @@ final class AudioManager: NSObject, ObservableObject {
         currentURL = url
         nowPlayingName = name
         isPlaying = true
+        startProgressUpdates()
         if fadeDuration > 0 {
             startFade(to: safeTargetVolume, duration: fadeDuration)
         }
@@ -119,9 +124,27 @@ final class AudioManager: NSObject, ObservableObject {
         }
     }
 
+    private func startProgressUpdates() {
+        progressTimer?.invalidate()
+        playbackProgress = 0
+        playbackDuration = player?.duration ?? 0
+        progressTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] timer in
+            guard let self, let player = self.player else {
+                timer.invalidate()
+                return
+            }
+            self.playbackDuration = player.duration
+            self.playbackProgress = player.duration > 0
+                ? min(max(player.currentTime / player.duration, 0), 1)
+                : 0
+        }
+    }
+
     func stop() {
         fadeTimer?.invalidate()
         fadeTimer = nil
+        progressTimer?.invalidate()
+        progressTimer = nil
         player?.stop()
         player = nil
         fallbackSound?.stop()
@@ -129,6 +152,8 @@ final class AudioManager: NSObject, ObservableObject {
         currentURL = nil
         nowPlayingName = nil
         isPlaying = false
+        playbackProgress = 0
+        playbackDuration = 0
         isRinging = false
     }
 }
@@ -148,6 +173,10 @@ extension AudioManager: AVAudioPlayerDelegate {
             self.nowPlayingName = nil
             self.fadeTimer?.invalidate()
             self.fadeTimer = nil
+            self.progressTimer?.invalidate()
+            self.progressTimer = nil
+            self.playbackProgress = 1
+            self.playbackDuration = player.duration
 
             if wasRinging {
                 self.onTrackFinished?()

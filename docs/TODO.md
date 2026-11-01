@@ -10,6 +10,11 @@ are removed after their version is committed and pushed.
 
 后续功能按“先加入 TODO，再实现并在完成版本中移入 Completed”的流程维护。
 
+## Completed in 2.23.0
+
+- Upgraded local playback with sequential, shuffle, repeat-one, progress feedback, duration feedback, damaged-track skipping, and additional audio format filters.
+- Added Advanced staged wake-up settings with per-track volume and fade-in controls.
+
 ## Completed in 2.22.0
 
 - Added a Reliability Check page that checks the next alarm, alarm audio, imported audio health, fallback sound, output device and volume, shared storage, and scheduler activity.
