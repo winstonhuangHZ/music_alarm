@@ -8,6 +8,7 @@ final class AudioManager: NSObject, ObservableObject {
     @Published private(set) var isPlaying = false
     @Published private(set) var currentURL: URL?
     @Published private(set) var nowPlayingName: String?
+    private(set) var lastPlaybackError: String?
 
     /// Called when a local track finishes during alarm ringing (for
     /// sequential playlist support — advances to the next track).
@@ -46,6 +47,7 @@ final class AudioManager: NSObject, ObservableObject {
     func ring(url: URL, name: String?, numberOfLoops: Int = -1,
               fadeDuration: TimeInterval = 20, targetVolume: Float = 0.85) -> Bool {
         stop()
+        lastPlaybackError = nil
         guard let p = makePlayer(url: url) else {
             return false
         }
@@ -68,11 +70,18 @@ final class AudioManager: NSObject, ObservableObject {
     }
 
     @discardableResult
-    func ringFallback() -> Bool {
+    func ringFallback(name: String = "Glass") -> Bool {
         stop()
-        guard let sound = NSSound(named: "Glass") else { return false }
+        lastPlaybackError = nil
+        guard let sound = NSSound(named: name) else {
+            lastPlaybackError = String(format: L("Fallback sound is unavailable: %@"), name)
+            return false
+        }
         sound.loops = true
-        guard sound.play() else { return false }
+        guard sound.play() else {
+            lastPlaybackError = String(format: L("Fallback sound could not start: %@"), name)
+            return false
+        }
         isRinging = true
         isPlaying = true
         nowPlayingName = L("System fallback sound")
@@ -87,6 +96,7 @@ final class AudioManager: NSObject, ObservableObject {
             p.prepareToPlay()
             return p
         } catch {
+            lastPlaybackError = error.localizedDescription
             NSLog("AudioManager: failed to load %@: %@", url.path, error.localizedDescription)
             return nil
         }

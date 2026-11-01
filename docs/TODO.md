@@ -5,7 +5,6 @@ are removed after their version is committed and pushed.
 
 ## Remaining
 
-- [ ] Add fallback choice and detailed playback diagnostics.
 - [ ] Add restore preview and conflict handling for backups.
 - [ ] Add orphaned-audio cleanup and content-hash duplicate detection.
 - [ ] Add reliability diagnostics, accessibility coverage, and UI automation tests.
@@ -46,6 +45,11 @@ are removed after their version is committed and pushed.
 - Added recent alarm history and scheduler deadline diagnostics to Settings.
 - Added occurrence history to backup export and restore, with compatibility for format 1 backups.
 - Finished failed playback and naturally completed non-looping playlists through the normal engine cleanup path.
+
+## Completed in 2.14.0
+
+- Added selectable system fallback sounds.
+- Added detailed local-track and fallback failure reasons to occurrence history.
 
 ## Completed in 2.10.0
 

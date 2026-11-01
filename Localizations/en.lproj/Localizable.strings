@@ -167,3 +167,8 @@
 "All configured audio tracks failed" = "All configured audio tracks failed";
 "Occurrence history is missing" = "Occurrence history is missing";
 "System fallback sound" = "System fallback sound";
+"Fallback sound" = "Fallback sound";
+"Fallback sound is unavailable: %@" = "Fallback sound is unavailable: %@";
+"Fallback sound could not start: %@" = "Fallback sound could not start: %@";
+"File missing: %@" = "File missing: %@";
+"Audio failed: %@" = "Audio failed: %@";

@@ -34,6 +34,18 @@ enum WakeConfirmationMode: String, CaseIterable, Identifiable {
     var title: String { L(rawValue) }
 }
 
+enum FallbackSoundChoice: String, CaseIterable, Identifiable {
+    case glass = "Glass"
+    case ping = "Ping"
+    case basso = "Basso"
+    case blow = "Blow"
+    case sosumi = "Sosumi"
+    case submarine = "Submarine"
+
+    var id: String { rawValue }
+    var title: String { rawValue }
+}
+
 /// Shared date / fire-key helpers used by the alarm engine and store.
 enum AlarmTimeUtil {
     static let fireFormatter: DateFormatter = {

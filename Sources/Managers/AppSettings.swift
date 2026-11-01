@@ -44,6 +44,10 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(wakeConfirmationMode.rawValue, forKey: Keys.wakeConfirmationMode) }
     }
 
+    @Published var fallbackSoundChoice: FallbackSoundChoice {
+        didSet { UserDefaults.standard.set(fallbackSoundChoice.rawValue, forKey: Keys.fallbackSoundChoice) }
+    }
+
     @Published private(set) var launchAtLoginError: String?
 
     private enum Keys {
@@ -55,6 +59,7 @@ final class AppSettings: ObservableObject {
         static let wakeConfirmationEnabled = "MusicAlarm.wakeConfirmationEnabled.v1"
         static let wakeConfirmationDeadline = "MusicAlarm.wakeConfirmationDeadline.v1"
         static let wakeConfirmationMode = "MusicAlarm.wakeConfirmationMode.v1"
+        static let fallbackSoundChoice = "MusicAlarm.fallbackSoundChoice.v1"
     }
 
     private init() {
@@ -65,6 +70,7 @@ final class AppSettings: ObservableObject {
         wakeConfirmationEnabled = UserDefaults.standard.object(forKey: Keys.wakeConfirmationEnabled) as? Bool ?? false
         wakeConfirmationDeadlineMinutes = UserDefaults.standard.object(forKey: Keys.wakeConfirmationDeadline) as? Int ?? 30
         wakeConfirmationMode = WakeConfirmationMode(rawValue: UserDefaults.standard.string(forKey: Keys.wakeConfirmationMode) ?? "") ?? .button
+        fallbackSoundChoice = FallbackSoundChoice(rawValue: UserDefaults.standard.string(forKey: Keys.fallbackSoundChoice) ?? "") ?? .glass
 
         if #available(macOS 13.0, *) {
             launchAtLogin = SMAppService.mainApp.status == .enabled

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.14.0 - unreleased
+
+### Fallback and playback diagnostics
+
+- Added selectable system fallback sounds in Settings.
+- Recorded missing-file, decode, fallback-unavailable, and fallback-start failures in occurrence history.
+- Test Alarm and scheduled playback now use the same selected fallback sound.
+
 ## 2.13.0 - unreleased
 
 ### Occurrence history and playback diagnostics

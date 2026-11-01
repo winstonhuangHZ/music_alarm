@@ -15,6 +15,11 @@ struct SettingsView: View {
                 Toggle(L("Hide the main window on launch"), isOn: $settings.hideMainWindowOnLaunch)
                 Toggle(L("Show Music Alarm in the menu bar"), isOn: $settings.showMenuBarItem)
                 Toggle(L("Copy imported audio into the Music Alarm library"), isOn: $settings.copyImportedAudioToLibrary)
+                Picker(L("Fallback sound"), selection: $settings.fallbackSoundChoice) {
+                    ForEach(FallbackSoundChoice.allCases) { choice in
+                        Text(choice.title).tag(choice)
+                    }
+                }
                 VStack(alignment: .leading, spacing: 5) {
                     Text(L("Missed alarm behavior"))
                     Picker(L("Missed alarm behavior"), selection: $settings.missedAlarmPolicy) {

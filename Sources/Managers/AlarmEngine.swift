@@ -166,6 +166,7 @@ final class AlarmEngine: ObservableObject {
         guard let alarm = ringingAlarm else { return false }
         let tracks = alarm.tracks
         var attemptedTracks: [String] = []
+        var failures: [String] = []
 
         while currentTrackIndex < tracks.count {
             let track = tracks[currentTrackIndex]
@@ -181,6 +182,10 @@ final class AlarmEngine: ObservableObject {
                     markPlaybackStartedIfNeeded(usedFallback: false,
                                                 attemptedTracks: attemptedTracks)
                     return true
+                } else if !FileManager.default.fileExists(atPath: path) {
+                    failures.append(String(format: L("File missing: %@"), track.displayName))
+                } else if let error = audioManager.lastPlaybackError {
+                    failures.append(String(format: L("Audio failed: %@"), error))
                 }
             case .unavailable:
                 break
@@ -188,7 +193,7 @@ final class AlarmEngine: ObservableObject {
             currentTrackIndex += 1
         }
 
-        if audioManager.ringFallback() {
+        if audioManager.ringFallback(name: AppSettings.shared.fallbackSoundChoice.rawValue) {
             markPlaybackStartedIfNeeded(usedFallback: true,
                                         attemptedTracks: attemptedTracks)
             return true
@@ -197,9 +202,9 @@ final class AlarmEngine: ObservableObject {
             store.markPlaybackFailed(id: candidate.alarm.id,
                                      occurrence: candidate.occurrence,
                                      isSnooze: candidate.isSnooze,
-                                     reason: attemptedTracks.isEmpty
-                                        ? L("No playable audio or system fallback")
-                                        : L("All configured audio tracks failed") ,
+                                     reason: (failures + [audioManager.lastPlaybackError].compactMap { $0 }).joined(separator: "; ").isEmpty
+                                        ? (attemptedTracks.isEmpty ? L("No playable audio or system fallback") : L("All configured audio tracks failed"))
+                                        : (failures + [audioManager.lastPlaybackError].compactMap { $0 }).joined(separator: "; "),
                                      attemptedTracks: attemptedTracks)
         }
         return false
