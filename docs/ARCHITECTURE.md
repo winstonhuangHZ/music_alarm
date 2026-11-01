@@ -19,6 +19,7 @@ AppDelegate
     ├── ContentView
     ├── AddAlarmView
     ├── AlarmRowView
+    ├── AudioBarView / MusicLibraryPanel
     └── AlarmPopupView
 ```
 
@@ -56,6 +57,12 @@ AppDelegate
 负责本地文件预览、闹钟播放、渐入和系统 fallback。播放失败会返回给调度器，由调度器尝试下一个音频。完成回调会检查当前播放器身份，避免旧回调推进新的播放状态。
 
 当播放列表不循环并且最后一首完成时，`AlarmEngine` 走统一的 stop/finish 路径，确保音频、弹窗、最大播放计时器和候选队列同时清理。
+
+### `MusicLibraryPanel`
+
+主窗口只显示音乐库摘要和展开入口，完整音频管理放在右侧面板。面板使用垂直音频行，
+每行提供播放、替换和删除操作，并把扫描、孤立文件清理和重复音频清理放在音乐库上下文中。
+这些日常操作不再占用设置页面。
 
 全局暂停和单个闹钟临时禁用会在候选生成、最近 deadline 计算和播放队列开始前同时检查，
 因此暂停期间不会产生新的 occurrence。暂停截止后，重新激活、存储变化或定时器会让调度器

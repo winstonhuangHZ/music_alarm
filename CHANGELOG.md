@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.19.0 - unreleased
+
+### Localization and library navigation
+
+- Changed Light and Dark themes to use solid backgrounds without animated gradients.
+- Replaced the crowded horizontal music strip with a compact summary bar and expandable trailing library panel.
+- Moved pause controls and audio-library maintenance actions out of Settings into the main window and library panel.
+- Added localized labels for opening and closing the music library.
+
 ## 2.18.0 - unreleased
 
 ### Themes, temporary pauses, and shared runtime state

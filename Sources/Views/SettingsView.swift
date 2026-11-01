@@ -10,7 +10,6 @@ struct SettingsView: View {
     @State private var showImportConfirmation = false
     @State private var backupPreview: BackupPreview?
     @State private var restorePolicy: BackupConflictPolicy = .replace
-    @State private var libraryMessage = ""
 
     var body: some View {
         Form {
@@ -22,20 +21,6 @@ struct SettingsView: View {
                 Picker(L("Theme"), selection: $settings.themeChoice) {
                     ForEach(ThemeChoice.allCases) { choice in
                         Text(choice.title).tag(choice)
-                    }
-                }
-                if store.isPausedForAll {
-                    HStack {
-                        Text(String(format: L("All alarms paused until %@"), dateString(store.pauseAllUntil ?? Date())))
-                            .font(.caption)
-                            .foregroundColor(.orange)
-                        Spacer()
-                        Button(L("Resume all alarms")) { store.resumeAll() }
-                    }
-                } else {
-                    HStack {
-                        Button(L("Pause today")) { store.pauseToday() }
-                        Button(L("Pause for 1 hour")) { store.pauseFor(hours: 1) }
                     }
                 }
                 Picker(L("Fallback sound"), selection: $settings.fallbackSoundChoice) {
@@ -107,27 +92,6 @@ struct SettingsView: View {
                         }
                         .padding(.vertical, 2)
                     }
-                }
-            }
-
-            Section(header: Text(L("Audio library health"))) {
-                HStack {
-                    Button(L("Scan audio library")) {
-                        libraryMessage = store.audioLibraryReport().summary
-                    }
-                    Button(L("Remove orphaned files")) {
-                        let count = store.removeOrphanedManagedAudioFiles()
-                        libraryMessage = String(format: L("Removed %@ orphaned files"), "\(count)")
-                    }
-                    Button(L("Deduplicate audio")) {
-                        let count = store.deduplicateAudioLibrary()
-                        libraryMessage = String(format: L("Removed %@ duplicate items"), "\(count)")
-                    }
-                }
-                if !libraryMessage.isEmpty {
-                    Text(libraryMessage)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
                 }
             }
 

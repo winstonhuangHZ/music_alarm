@@ -124,27 +124,29 @@ struct ThemeBackdrop: View {
         let palette = AppThemePalette.palette(for: choice)
         ZStack {
             palette.background
-            AngularGradient(gradient: Gradient(colors: palette.colors(for: visualState)),
-                            center: .center,
-                            angle: .degrees(rotation))
-                .opacity(0.24)
-                .blur(radius: 42)
-                .scaleEffect(1.25)
-            Circle()
-                .fill(palette.colors(for: visualState).first?.opacity(0.18) ?? .clear)
-                .frame(width: 260, height: 260)
-                .blur(radius: 52)
-                .offset(x: rotation.truncatingRemainder(dividingBy: 80) - 40,
-                        y: -rotation.truncatingRemainder(dividingBy: 110) + 55)
+            if usesAnimatedBackdrop {
+                AngularGradient(gradient: Gradient(colors: palette.colors(for: visualState)),
+                                center: .center,
+                                angle: .degrees(rotation))
+                    .opacity(0.24)
+                    .blur(radius: 42)
+                    .scaleEffect(1.25)
+                Circle()
+                    .fill(palette.colors(for: visualState).first?.opacity(0.18) ?? .clear)
+                    .frame(width: 260, height: 260)
+                    .blur(radius: 52)
+                    .offset(x: rotation.truncatingRemainder(dividingBy: 80) - 40,
+                            y: -rotation.truncatingRemainder(dividingBy: 110) + 55)
+            }
         }
         .onAppear {
-            guard !reduceMotion else { return }
+            guard usesAnimatedBackdrop, !reduceMotion else { return }
             withAnimation(.linear(duration: 36).repeatForever(autoreverses: false)) {
                 rotation = 360
             }
         }
         .onChange(of: visualStateKey) { _ in
-            guard !reduceMotion else { return }
+            guard usesAnimatedBackdrop, !reduceMotion else { return }
             withAnimation(.easeInOut(duration: 1.2)) {
                 rotation += 18
             }
@@ -159,6 +161,30 @@ struct ThemeBackdrop: View {
         case .paused: return "paused"
         case .ringing: return "ringing"
         case .confirming: return "confirming"
+        }
+    }
+
+    private var usesAnimatedBackdrop: Bool {
+        switch choice {
+        case .light, .dark:
+            return false
+        default:
+            return true
+        }
+    }
+}
+
+/// Uses a solid surface for the explicit Light and Dark themes. System and
+/// expressive themes keep the frosted material treatment.
+struct ThemeSurfaceBackground: View {
+    let choice: ThemeChoice
+
+    var body: some View {
+        switch choice {
+        case .light, .dark:
+            AppThemePalette.palette(for: choice).background
+        default:
+            VisualEffectView()
         }
     }
 }

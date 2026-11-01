@@ -14,25 +14,38 @@ struct ContentView: View {
 
     @State private var showAddAlarm = false
     @State private var editingAlarm: AlarmItem?
+    @State private var showMusicLibrary = false
     @State private var now = Date()
     @State private var clockTimer: Timer?
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .trailing) {
             ThemeBackdrop(choice: settings.themeChoice, visualState: visualState)
             VStack(spacing: 0) {
                 headerView
                 Divider()
                 alarmListView
                 Divider()
-                AudioBarView()
+                AudioBarView(isExpanded: $showMusicLibrary)
                 Divider()
                 footerBar
+            }
+            if showMusicLibrary {
+                Color.black.opacity(0.08)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) { showMusicLibrary = false }
+                    }
+                MusicLibraryPanel(isPresented: $showMusicLibrary)
+                    .padding(14)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
         .frame(minWidth: 760, minHeight: 640)
         .accentColor(AppThemePalette.palette(for: settings.themeChoice).accent)
         .preferredColorScheme(AppThemePalette.palette(for: settings.themeChoice).colorScheme)
+        .animation(.easeInOut(duration: 0.2), value: showMusicLibrary)
         .sheet(isPresented: $showAddAlarm) {
             AddAlarmView(alarm: self.editingAlarm)
         }
@@ -65,7 +78,7 @@ struct ContentView: View {
         .padding(.top, 34) // clear the traffic-light buttons
         .padding(.bottom, 18)
         .frame(maxWidth: .infinity)
-        .background(VisualEffectView())
+        .background(ThemeSurfaceBackground(choice: settings.themeChoice))
     }
 
     private var countdownView: some View {

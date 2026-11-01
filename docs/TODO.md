@@ -8,6 +8,13 @@ are removed after their version is committed and pushed.
 暂无 2.18.0 之前已确定且未完成的项目。后续功能候选会在确认范围后加入这里，完成后从 Remaining
 移动到对应版本的 Completed 小节。
 
+## Completed in 2.19.0
+
+- Changed Light and Dark themes to solid backgrounds.
+- Added an expandable music library side panel with vertical audio rows and maintenance actions.
+- Moved daily pause controls to the main window and audio-library maintenance actions to the library panel.
+- Added the new library navigation labels to all localization files.
+
 ## Completed in 2.18.0
 
 - Added System, Light, Dark, Dawn Flow, Dracula, Nord, and Catppuccin theme palettes.
