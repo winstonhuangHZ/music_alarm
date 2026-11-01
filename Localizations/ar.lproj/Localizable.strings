@@ -64,3 +64,12 @@
 "Missing" = "مفقود";
 "Replace Audio" = "استبدال الصوت";
 "Replace" = "استبدال";
+"Application" = "Application";
+"Launch Music Alarm at login" = "Launch Music Alarm at login";
+"Hide the main window on launch" = "Hide the main window on launch";
+"Show Music Alarm in the menu bar" = "Show Music Alarm in the menu bar";
+"About reliability" = "About reliability";
+"Music Alarm keeps one running instance so alarm playback is not duplicated when the app is opened from another copy." = "Music Alarm keeps one running instance so alarm playback is not duplicated when the app is opened from another copy.";
+"Settings…" = "Settings…";
+"Settings" = "Settings";
+"Open Music Alarm" = "Open Music Alarm";

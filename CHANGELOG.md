@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.8.0 - unreleased
+
+### Application lifecycle
+
+- Added a per-user single-instance guard so opening another app copy activates the existing process.
+- Added optional launch-at-login registration on supported macOS versions.
+- Added optional hidden-on-launch behavior.
+- Added an optional menu bar item and settings window.
+- Added `docs/TODO.md` as the maintained list of remaining product and reliability work.
+
 ## 2.7.0 - unreleased
 
 ### 构建与发布安全
@@ -63,11 +73,3 @@
 - 应用重新激活时重新加载共享数据。
 - 旧闹钟新增字段缺失时使用默认值，避免整表解码失败。
 - 导入音频复制到共享目录，减少源文件移动导致的失效。
-
-### 计划中的后续版本
-
-- 2.3：可靠调度、睡眠恢复、播放状态机和错过闹钟处理。
-- 2.4：移除外部流媒体功能并迁移旧音频记录。
-- 2.5：可选“我已经真正起床”确认。
-- 2.6：音频库引用治理和可恢复的失效音频处理。
-- 2.7：签名、CI 和发布脚本安全化。
