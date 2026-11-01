@@ -146,6 +146,7 @@ struct AlarmPopupView: View {
                 .cornerRadius(9)
             }
             .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel(String(format: L("Snooze %d min"), alarm.snoozeMinutes))
 
             Button(action: { self.onStop(self.alarm) }) {
                 HStack(spacing: 8) {
@@ -160,6 +161,7 @@ struct AlarmPopupView: View {
                 .cornerRadius(9)
             }
             .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel(L("Stop"))
             }
         }
         .opacity(appeared ? 1 : 0)
@@ -175,6 +177,7 @@ struct AlarmPopupView: View {
             VStack(spacing: 6) {
                 TextField(L("Type AWAKE to confirm"), text: $confirmationInput)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .accessibilityLabel(L("Confirmation word"))
                 confirmationButton
                     .disabled(confirmationInput.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() != "awake")
             }
@@ -192,6 +195,7 @@ struct AlarmPopupView: View {
                 .cornerRadius(9)
             }
             .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel(L("Hold for 3 seconds"))
             .onLongPressGesture(minimumDuration: 3) {
                 guard !gestureCompleted else { return }
                 gestureCompleted = true
@@ -208,6 +212,7 @@ struct AlarmPopupView: View {
                         onConfirmWake(alarm)
                     }
                 })
+                .accessibilityLabel(L("Slide to confirm"))
             }
         case .mainWindow:
             Button(action: {
@@ -227,6 +232,7 @@ struct AlarmPopupView: View {
                 .cornerRadius(9)
             }
             .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel(L("Confirm from the main window"))
         }
     }
 
@@ -244,5 +250,6 @@ struct AlarmPopupView: View {
             .cornerRadius(9)
         }
         .buttonStyle(PlainButtonStyle())
+        .accessibilityLabel(L("I am really awake"))
     }
 }

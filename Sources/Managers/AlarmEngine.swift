@@ -7,6 +7,7 @@ import AppKit
 final class AlarmEngine: ObservableObject {
     @Published private(set) var isRinging = false
     @Published private(set) var ringingAlarm: AlarmItem?
+    @Published private(set) var lastDiagnostic: String = ""
 
     private var deadlineTimer: Timer?
     private let store: AlarmStore
@@ -75,6 +76,7 @@ final class AlarmEngine: ObservableObject {
 
     private func tick(reason: TickReason = .regular) {
         let now = Date()
+        lastDiagnostic = String(format: L("Scheduler checked at %@"), diagnosticDate(now))
         store.reconcileWakeConfirmationStates(now: now)
         for alarm in store.alarms where alarm.isEnabled {
             guard !claimedAlarmIDs.contains(alarm.id),
@@ -194,11 +196,13 @@ final class AlarmEngine: ObservableObject {
         }
 
         if audioManager.ringFallback(name: AppSettings.shared.fallbackSoundChoice.rawValue) {
+            lastDiagnostic = L("Playback started with system fallback")
             markPlaybackStartedIfNeeded(usedFallback: true,
                                         attemptedTracks: attemptedTracks)
             return true
         }
         if let candidate = currentCandidate, !candidate.isTest, currentOccurrenceID == nil {
+            lastDiagnostic = String(format: L("Playback failed for %@"), candidate.alarm.label.isEmpty ? candidate.alarm.timeString : candidate.alarm.label)
             store.markPlaybackFailed(id: candidate.alarm.id,
                                      occurrence: candidate.occurrence,
                                      isSnooze: candidate.isSnooze,
@@ -297,5 +301,13 @@ final class AlarmEngine: ObservableObject {
         AlarmPopupController.dismiss()
         startNextIfNeeded()
         scheduleNextDeadline()
+    }
+
+    private func diagnosticDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.dateStyle = .short
+        formatter.timeStyle = .medium
+        return formatter.string(from: date)
     }
 }

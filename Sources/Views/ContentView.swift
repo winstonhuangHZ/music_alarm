@@ -181,6 +181,7 @@ struct ContentView: View {
                 }
             }
             .buttonStyle(BorderedButtonStyle())
+            .accessibilityLabel(L("Test Alarm"))
             Button(action: { self.showNewAlarm() }) {
                 HStack(spacing: 8) {
                     Text("➕")
@@ -192,6 +193,7 @@ struct ContentView: View {
                 .padding(.vertical, 4)
             }
             .buttonStyle(BorderedButtonStyle())
+            .accessibilityLabel(L("Add Alarm"))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

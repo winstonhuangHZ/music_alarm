@@ -12,6 +12,7 @@
 - 发布脚本只使用 `gh auth login` 或 `GH_TOKEN`，不读取 token 文件，也不把 token 放入 curl 参数。
 - 发布脚本要求 clean tree、tag 指向 HEAD、DMG 构建元数据版本和 commit 都匹配。
 - 普通 push、PR 和 tag 构建只上传 artifact，不自动创建 GitHub Release。
+- 签名、公证和 Gatekeeper 验证命令已记录在本文件；凭据只通过本机 Keychain profile 或 CI secret 提供。
 
 这些问题安排在后续独立阶段处理。正式发布前必须：
 
@@ -22,3 +23,27 @@
 5. Actions 固定到审核过的 commit SHA，并声明最小 job 权限。
 6. 发布前检查 clean tree、tag/HEAD 一致和 DMG 时间戳/构建来源。
 7. 将发布动作和普通 push/PR 构建分开，避免普通 CI 意外创建 Release。需要发布时由人工运行 `publish_release.sh`。
+
+## Signing and notarization readiness
+
+本地正式构建示例：
+
+```bash
+SIGNING_IDENTITY="Developer ID Application: Example" \
+REQUIRE_SIGNING=1 ./build.sh
+./make_dmg.sh
+```
+
+使用已经写入本机 Keychain 的 profile 公证，不把 Apple ID、app-specific
+password 或 token 写入仓库：
+
+```bash
+xcrun notarytool submit dist/MusicAlarm.dmg \
+  --keychain-profile "music-alarm-notary" --wait
+xcrun stapler staple dist/MusicAlarm.dmg
+spctl --assess --type open --context context:primary-signature dist/MusicAlarm.dmg
+```
+
+CI 应通过 secret 注入签名证书和 notarytool profile，任务结束后清理临时
+keychain。未配置正式身份时，开发构建继续使用 ad-hoc 签名，且本项目不会
+自动创建 Release。

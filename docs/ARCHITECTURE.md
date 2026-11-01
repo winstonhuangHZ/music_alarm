@@ -56,6 +56,15 @@ AppDelegate
 
 当播放列表不循环并且最后一首完成时，`AlarmEngine` 走统一的 stop/finish 路径，确保音频、弹窗、最大播放计时器和候选队列同时清理。
 
+### Diagnostics and verification
+
+Settings exposes the current clock, time zone, UTC offset, daylight-saving
+state, next scheduler deadline, and last scheduler event. The repository also
+contains a repeatable core smoke test and an optional macOS accessibility UI
+smoke test. The core test checks storage recovery, backup restore, occurrence
+history, audio-library health, localization parity, and required accessibility
+labels.
+
 ### 应用生命周期
 
 - `SingleInstanceGuard` 使用用户级锁文件保证同一用户只运行一个 Music Alarm 进程。

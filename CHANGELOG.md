@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.17.0 - unreleased
+
+### Reliability, accessibility, and verification
+
+- Added runtime scheduler diagnostics to Settings.
+- Added accessibility labels to alarm controls, confirmation controls, audio controls, and primary window actions.
+- Added repeatable core smoke tests for storage, backup, localization parity, and accessibility coverage.
+- Added an optional macOS UI accessibility smoke test for the built application.
+- Documented signing, notarization, stapling, and Gatekeeper verification commands without storing credentials.
+
 ## 2.16.0 - unreleased
 
 ### Audio library health

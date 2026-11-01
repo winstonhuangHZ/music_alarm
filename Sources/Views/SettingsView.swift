@@ -4,6 +4,7 @@ import AppKit
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     @EnvironmentObject var store: AlarmStore
+    @EnvironmentObject var engine: AlarmEngine
     @State private var backupMessage = ""
     @State private var pendingImportURL: URL?
     @State private var showImportConfirmation = false
@@ -205,6 +206,9 @@ struct SettingsView: View {
             Text("\(L("Time zone")): \(zone.identifier) (UTC\(sign)\(String(format: "%02d:%02d", hours, minutes)))")
             Text("\(L("Daylight saving time")): \(zone.isDaylightSavingTime(for: Date()) ? L("On") : L("Off"))")
             Text("\(L("Next scheduler deadline")): \(nextDate.map(dateString) ?? L("No upcoming alarm"))")
+            if !engine.lastDiagnostic.isEmpty {
+                Text("\(L("Last engine event")): \(engine.lastDiagnostic)")
+            }
         }
         .font(.caption2)
         .foregroundColor(.secondary)

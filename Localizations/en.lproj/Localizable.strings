@@ -64,7 +64,6 @@
 "Missing" = "Missing";
 "Replace Audio" = "Replace Audio";
 "Replace" = "Replace";
-"Application" = "Application";
 "Launch Music Alarm at login" = "Launch Music Alarm at login";
 "Hide the main window on launch" = "Hide the main window on launch";
 "Show Music Alarm in the menu bar" = "Show Music Alarm in the menu bar";
@@ -184,3 +183,12 @@
 "Deduplicate audio" = "Deduplicate audio";
 "Removed %@ orphaned files" = "Removed %@ orphaned files";
 "Removed %@ duplicate items" = "Removed %@ duplicate items";
+"Scheduler checked at %@" = "Scheduler checked at %@";
+"Playback failed for %@" = "Playback failed for %@";
+"Playback started with system fallback" = "Playback started with system fallback";
+"Last engine event" = "Last engine event";
+"Disable alarm" = "Disable alarm";
+"Enable alarm" = "Enable alarm";
+"Confirmation word" = "Confirmation word";
+"Pause preview" = "Pause preview";
+"Delete audio" = "Delete audio";

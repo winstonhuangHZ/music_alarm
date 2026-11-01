@@ -20,6 +20,7 @@ Music Alarm 是一个面向 macOS 的本地音乐闹钟。当前版本的核心�
 - 可配置渐入、目标音量、最大播放时长和播放列表循环
 - 可选测试闹钟和多种起床确认方式
 - 可选择系统 fallback 声音，并记录播放失败原因
+- 设置中提供调度、时区和系统时间诊断，并带有核心与 UI smoke test 脚本
 - 可跳过下一次重复闹钟，并可为每个闹钟设置贪睡时长
 - 支持包含音频文件的备份导出和恢复
 - 恢复备份前显示摘要，并支持替换或合并当前数据
@@ -53,6 +54,10 @@ Music Alarm 是一个面向 macOS 的本地音乐闹钟。当前版本的核心�
 ```bash
 ./build.sh
 ./make_dmg.sh
+# Core smoke tests (requires a macOS Swift toolchain)
+./scripts/run_smoke_tests.sh
+# Optional UI accessibility smoke test after building
+./scripts/ui_smoke.sh
 ```
 
 构建脚本会尝试生成 `arm64` 和 `x86_64` 两个架构。正式发布、签名和公证流程见 [发布与 CI](docs/RELEASE_AND_CI.md)。当前开发阶段不会自动创建 GitHub Release。

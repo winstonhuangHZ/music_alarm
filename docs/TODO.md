@@ -5,8 +5,6 @@ are removed after their version is committed and pushed.
 
 ## Remaining
 
-- [ ] Add reliability diagnostics, accessibility coverage, and UI automation tests.
-- [ ] Update release documentation after signing and notarization are configured.
 
 ## Completed in 2.8.0
 
@@ -59,6 +57,13 @@ are removed after their version is committed and pushed.
 - Added SHA-256 content hashes and duplicate-content detection for imported audio.
 - Added audio-library health scanning and cleanup for managed files without metadata.
 - Added duplicate library cleanup that rewrites alarm references before removing managed copies.
+
+## Completed in 2.17.0
+
+- Added the last scheduler event to the Settings diagnostics panel.
+- Added accessibility labels to primary alarm, popup, confirmation, audio, and window actions.
+- Added repeatable core and optional UI accessibility smoke-test scripts.
+- Documented the signing/notarization readiness checks without putting credentials in the repository.
 
 ## Completed in 2.10.0
 

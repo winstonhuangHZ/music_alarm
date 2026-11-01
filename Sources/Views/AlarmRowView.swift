@@ -62,6 +62,7 @@ struct AlarmRowView: View {
                     .font(.system(size: 14))
             }
             .buttonStyle(PlainButtonStyle())
+            .accessibilityLabel(L("Edit Alarm"))
 
             if alarm.requiresWakeConfirmation && settings.wakeConfirmationEnabled && isAwaitingWakeConfirmation {
                 Button(action: { self.store.confirmWake(id: self.alarm.id) }) {
@@ -70,6 +71,7 @@ struct AlarmRowView: View {
                         .foregroundColor(.green)
                 }
                 .buttonStyle(PlainButtonStyle())
+                .accessibilityLabel(L("Confirm wake-up"))
             }
 
             Toggle(isOn: enabledBinding) {
@@ -77,6 +79,7 @@ struct AlarmRowView: View {
             }
             .labelsHidden()
             .toggleStyle(SwitchToggleStyle())
+            .accessibilityLabel(alarm.isEnabled ? L("Disable alarm") : L("Enable alarm"))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)

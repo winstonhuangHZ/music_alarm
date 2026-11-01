@@ -29,6 +29,7 @@ struct AudioBarView: View {
                     Text(L("Import Music"))
                 }
             }
+            .accessibilityLabel(L("Import Music"))
         }
     }
 
@@ -96,6 +97,7 @@ struct AudioBarView: View {
         }
         .buttonStyle(PlainButtonStyle())
         .disabled(!audio.fileExists)
+        .accessibilityLabel(playing ? L("Pause preview") : L("Preview Sound"))
     }
 
     private func chipRemoveButton(_ audio: ImportedAudio) -> some View {
@@ -107,5 +109,6 @@ struct AudioBarView: View {
         }
         .buttonStyle(PlainButtonStyle())
         .foregroundColor(Color.secondary)
+        .accessibilityLabel(L("Delete audio"))
     }
 }
