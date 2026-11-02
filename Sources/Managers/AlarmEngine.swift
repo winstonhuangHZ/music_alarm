@@ -305,12 +305,36 @@ final class AlarmEngine: ObservableObject {
     // MARK: - User actions
 
     func stopRinging() {
-        if let alarm = ringingAlarm, currentCandidate?.isTest != true {
+        guard let alarm = ringingAlarm else { return }
+        if alarm.requiresWakeConfirmation,
+           AppSettings.shared.wakeConfirmationEnabled,
+           AppSettings.shared.wakeConfirmationMode == .calculus {
+            stopAudioForCalculusConfirmation(alarm: alarm)
+            return
+        }
+        if currentCandidate?.isTest != true {
             store.stopAlarm(alarm)
             AlarmNotificationManager.shared.remove(alarm: alarm)
         }
         audioManager.stop()
         finishCurrent()
+    }
+
+    /// Stops the sound while keeping the active confirmation session alive.
+    /// Calculus confirmation must remain on screen after Stop; otherwise Stop
+    /// would become an unintended way to bypass the challenge.
+    private func stopAudioForCalculusConfirmation(alarm: AlarmItem) {
+        if currentCandidate?.isTest != true,
+           alarm.wakeConfirmationState == .pending {
+            store.stopAlarm(alarm)
+            AlarmNotificationManager.shared.remove(alarm: alarm)
+        }
+        audioManager.stop()
+        maximumDurationTimer?.invalidate()
+        maximumDurationTimer = nil
+        isRinging = false
+        showActiveCalculusConfirmation(for: alarm)
+        scheduleNextDeadline()
     }
 
     func snoozeRinging(minutes: Int = 5) {
@@ -345,6 +369,18 @@ final class AlarmEngine: ObservableObject {
             onConfirmWake: { [weak self] selectedAlarm in
                 self?.completeWakeConfirmation(for: selectedAlarm, isTest: false)
                 AlarmPopupController.dismiss()
+            },
+            showsPlaybackActions: false
+        )
+    }
+
+    private func showActiveCalculusConfirmation(for alarm: AlarmItem) {
+        AlarmPopupController.show(
+            alarm: alarm,
+            onSnooze: { _ in },
+            onStop: { _ in },
+            onConfirmWake: { [weak self] _ in
+                self?.confirmWake()
             },
             showsPlaybackActions: false
         )

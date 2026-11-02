@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.26.3 - unreleased
+
+### Calculus confirmation protection
+
+- Stop now silences a calculus-confirmation alarm and leaves the challenge open.
+- The challenge must be answered correctly before the active alarm session is finalized.
+- Applied the same behavior to the notification Stop action and the maximum playback timeout.
+
 ## 2.26.2 - unreleased
 
 ### Calculus popup layout and math typography
