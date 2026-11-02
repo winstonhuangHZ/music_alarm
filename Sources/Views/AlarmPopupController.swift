@@ -24,7 +24,8 @@ final class AlarmPopupController {
                                          onConfirmWake: onConfirmWake,
                                          showsPlaybackActions: showsPlaybackActions)
         let hosting = NSHostingView(rootView: contentView)
-        let height: CGFloat = showsPlaybackActions ? 480 : 600
+        let visibleHeight = NSScreen.main?.visibleFrame.height ?? 900
+        let height = min(820, max(560, visibleHeight - 80))
         hosting.frame = NSRect(x: 0, y: 0, width: 524, height: height)
 
         let panel = AlarmPanel(

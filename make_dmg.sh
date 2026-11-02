@@ -10,13 +10,13 @@
 #   ./make_dmg.sh [APP_PATH] [DMG_PATH]
 #
 # Defaults:
-#   APP_PATH = dist/MusicAlarm.app
+#   APP_PATH = dist/Music Alarm.app
 #   DMG_PATH = dist/MusicAlarm.dmg
 set -euo pipefail
 
 BUILD_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-APP_PATH="${1:-dist/MusicAlarm.app}"
+APP_PATH="${1:-dist/Music Alarm.app}"
 DMG_PATH="${2:-dist/MusicAlarm.dmg}"
 
 # Resolve paths relative to the repo root unless they are absolute.

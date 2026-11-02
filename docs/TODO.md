@@ -7,6 +7,12 @@ are removed after their version is committed and pushed.
 
 暂无已确定且未完成的项目。新功能先加入本列表，完成并验证后再移到对应版本的 Completed 小节。
 
+## Completed in 2.26.2
+
+- Fixed calculus confirmation overflow by separating the scrollable question area from the fixed playback actions.
+- Preferred Computer Modern typography for offline formula rendering.
+- Made build and packaging scripts use the actual `Music Alarm.app` bundle path.
+
 ## Completed in 2.26.1
 
 - Smoothed the three-second hold confirmation progress and made cancellation reset the visual state cleanly.

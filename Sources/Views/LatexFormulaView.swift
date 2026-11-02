@@ -47,8 +47,9 @@ private enum LatexMathRenderer {
         :root { color-scheme: light dark; }
         html, body { margin: 0; padding: 0; background: transparent; }
         body { min-height: \(minHeight)px; display: flex; align-items: center; justify-content: center;
-               color: -apple-system-label; font-family: Georgia, 'Times New Roman', serif; }
-        .math { font-size: 24px; line-height: 1.35; white-space: nowrap; }
+               color: -apple-system-label; font-family: 'CMU Serif', 'Computer Modern', 'Latin Modern Math', serif; }
+        .math { font-family: 'CMU Serif', 'Computer Modern', 'Latin Modern Math', serif;
+                font-size: 24px; line-height: 1.35; white-space: nowrap; }
         .frac { display: inline-flex; vertical-align: middle; flex-direction: column; text-align: center; margin: 0 3px; }
         .frac .num { border-bottom: 1px solid currentColor; padding: 0 4px 1px; }
         .frac .den { padding: 1px 4px 0; }

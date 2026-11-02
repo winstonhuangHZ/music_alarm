@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-APP_PATH="${1:-$ROOT_DIR/dist/MusicAlarm.app}"
+APP_PATH="${1:-$ROOT_DIR/dist/Music Alarm.app}"
 
 [[ -d "$APP_PATH" ]] || {
   echo "Build the app first: $ROOT_DIR/build.sh" >&2

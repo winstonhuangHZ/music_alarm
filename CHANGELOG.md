@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.26.2 - unreleased
+
+### Calculus popup layout and math typography
+
+- Kept the calculus content in a scrollable region while pinning Snooze and Stop below it.
+- Limited the popup to the screen's visible height so the action buttons remain reachable.
+- Updated formula rendering to prefer the installed Computer Modern / CMU Serif family.
+- Standardized build, DMG, and UI smoke-test defaults on `dist/Music Alarm.app`.
+
 ## 2.26.1 - unreleased
 
 ### Hold confirmation motion

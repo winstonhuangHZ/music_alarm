@@ -10,10 +10,11 @@
 set -euo pipefail
 
 APP_NAME="MusicAlarm"
+APP_DISPLAY_NAME="Music Alarm"
 BUNDLE_ID="com.musicalarm.app"
 BUILD_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DIST_DIR="$BUILD_ROOT/dist"
-APP_DIR="$DIST_DIR/$APP_NAME.app"
+APP_DIR="$DIST_DIR/$APP_DISPLAY_NAME.app"
 CONTENTS="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS/MacOS"
 RESOURCES_DIR="$CONTENTS/Resources"
@@ -45,7 +46,7 @@ warn() { echo -e "${YELLOW}WARN:${NC} $1"; }
 info "Music Alarm $APP_VERSION — universal build & package script"
 info "Target architectures: $ARCHS"
 info "Cleaning previous build..."
-rm -rf "$APP_DIR"
+rm -rf "$APP_DIR" "$DIST_DIR/MusicAlarm.app"
 mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 
 info "Compiling Swift sources with swiftc..."

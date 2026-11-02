@@ -38,11 +38,23 @@ struct AlarmPopupView: View {
 
     private var popupCard: some View {
         VStack(spacing: 14) {
-            alarmIcon
-            titleText
-            timeText
-            trackSection
-            actionButtons
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(spacing: 14) {
+                    alarmIcon
+                    titleText
+                    timeText
+                    trackSection
+                    if alarm.requiresWakeConfirmation && settings.wakeConfirmationEnabled {
+                        confirmationControl
+                    }
+                }
+                .padding(.bottom, 2)
+            }
+            .frame(maxHeight: showsPlaybackActions ? 610 : 700)
+
+            if showsPlaybackActions {
+                playbackButtons
+            }
         }
         .padding(32)
         .frame(width: 460)
@@ -138,14 +150,8 @@ struct AlarmPopupView: View {
         .opacity(appeared ? 1 : 0)
     }
 
-    private var actionButtons: some View {
-        VStack(spacing: 10) {
-            if alarm.requiresWakeConfirmation && settings.wakeConfirmationEnabled {
-                confirmationControl
-            }
-
-            if showsPlaybackActions {
-                HStack(spacing: 18) {
+    private var playbackButtons: some View {
+        HStack(spacing: 18) {
                     Button(action: { self.onSnooze(self.alarm) }) {
                         HStack(spacing: 8) {
                             Image(systemName: "moon.zzz.fill")
@@ -175,8 +181,6 @@ struct AlarmPopupView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     .accessibilityLabel(L("Stop"))
-                }
-            }
         }
         .opacity(appeared ? 1 : 0)
         .scaleEffect(appeared ? 1 : 0.9)
