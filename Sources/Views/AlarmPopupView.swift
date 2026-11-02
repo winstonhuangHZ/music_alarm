@@ -7,6 +7,7 @@ struct AlarmPopupView: View {
     let onSnooze: (AlarmItem) -> Void
     let onStop: (AlarmItem) -> Void
     let onConfirmWake: (AlarmItem) -> Void
+    var showsPlaybackActions: Bool = true
     @ObservedObject private var settings = AppSettings.shared
 
     @State private var appeared = false
@@ -17,6 +18,10 @@ struct AlarmPopupView: View {
     @State private var holdProgress = 0.0
     @State private var holdStartedAt: Date?
     @State private var holdTimer: Timer?
+    @State private var calculusChallenge = CalculusChallenge.random()
+    @State private var calculusSelection: Int?
+    @State private var calculusMessage = ""
+    @State private var calculusSolved = false
 
     var body: some View {
         popupCard
@@ -139,36 +144,38 @@ struct AlarmPopupView: View {
                 confirmationControl
             }
 
-            HStack(spacing: 18) {
-            Button(action: { self.onSnooze(self.alarm) }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "moon.zzz.fill")
-                    Text(String(format: L("Snooze %d min"), alarm.snoozeMinutes))
-                }
-                .font(.headline)
-                .foregroundColor(.white)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 8)
-                .background(Color.orange)
-                .cornerRadius(9)
-            }
-            .buttonStyle(PlainButtonStyle())
-            .accessibilityLabel(String(format: L("Snooze %d min"), alarm.snoozeMinutes))
+            if showsPlaybackActions {
+                HStack(spacing: 18) {
+                    Button(action: { self.onSnooze(self.alarm) }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "moon.zzz.fill")
+                            Text(String(format: L("Snooze %d min"), alarm.snoozeMinutes))
+                        }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 8)
+                        .background(Color.orange)
+                        .cornerRadius(9)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .accessibilityLabel(String(format: L("Snooze %d min"), alarm.snoozeMinutes))
 
-            Button(action: { self.onStop(self.alarm) }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "stop.fill")
-                    Text(L("Stop"))
+                    Button(action: { self.onStop(self.alarm) }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "stop.fill")
+                            Text(L("Stop"))
+                        }
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 8)
+                        .background(Color.red)
+                        .cornerRadius(9)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .accessibilityLabel(L("Stop"))
                 }
-                .font(.headline)
-                .foregroundColor(.white)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 8)
-                .background(Color.red)
-                .cornerRadius(9)
-            }
-            .buttonStyle(PlainButtonStyle())
-            .accessibilityLabel(L("Stop"))
             }
         }
         .opacity(appeared ? 1 : 0)
@@ -222,6 +229,83 @@ struct AlarmPopupView: View {
             }
             .buttonStyle(PlainButtonStyle())
             .accessibilityLabel(L("Confirm from the main window"))
+        case .calculus:
+            calculusChallengeControl
+        }
+    }
+
+    private var calculusChallengeControl: some View {
+        VStack(spacing: 10) {
+            Label(L(calculusChallenge.kind.titleKey), systemImage: "function")
+                .font(.headline)
+
+            Text(L("Choose the correct answer"))
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+
+            LatexFormulaView(latex: calculusChallenge.promptLatex, minHeight: 58)
+                .frame(maxWidth: .infinity, minHeight: 58)
+                .background(Color.primary.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .accessibilityLabel(L("Calculus question"))
+
+            VStack(spacing: 6) {
+                ForEach(calculusChallenge.choices) { choice in
+                    Button(action: { submitCalculusAnswer(choice.id) }) {
+                        HStack(alignment: .center, spacing: 8) {
+                            Image(systemName: calculusSelection == choice.id
+                                  ? (calculusSolved ? "checkmark.circle.fill" : "circle.inset.filled")
+                                  : "circle")
+                            if let latex = choice.latex {
+                                LatexFormulaView(latex: latex, minHeight: 30)
+                                    .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
+                            } else if let textKey = choice.textKey {
+                                Text(L(textKey))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(choiceBackground(choice.id))
+                        .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    .disabled(calculusSolved)
+                    .accessibilityLabel(choice.textKey.map { L($0) } ?? L("Calculus answer"))
+                }
+            }
+
+            if !calculusMessage.isEmpty {
+                Text(calculusMessage)
+                    .font(.caption)
+                    .foregroundColor(calculusSolved ? .green : .orange)
+                    .multilineTextAlignment(.center)
+            }
+
+            if !calculusSolved {
+                Text(L("Hint") + ": " + LatexFormulaView.accessibleText(for: calculusChallenge.hintLatex))
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+    }
+
+    private func choiceBackground(_ id: Int) -> Color {
+        guard let selected = calculusSelection, selected == id else { return Color.primary.opacity(0.06) }
+        return calculusSolved ? Color.green.opacity(0.18) : Color.orange.opacity(0.18)
+    }
+
+    private func submitCalculusAnswer(_ id: Int) {
+        calculusSelection = id
+        guard id == calculusChallenge.correctIndex else {
+            calculusMessage = L("Try again")
+            return
+        }
+        calculusSolved = true
+        calculusMessage = L("Correct") + ". " + LatexFormulaView.accessibleText(for: calculusChallenge.explanationLatex)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+            onConfirmWake(alarm)
         }
     }
 
@@ -233,11 +317,6 @@ struct AlarmPopupView: View {
             HStack(spacing: 8) {
                 Image(systemName: gestureCompleted ? "checkmark.circle.fill" : "hand.tap.fill")
                 Text(gestureCompleted ? L("Wake-up confirmed") : L("Hold for 3 seconds"))
-                if holdStartedAt != nil && !gestureCompleted {
-                    Text(String(format: "%.1f / 3.0", holdProgress * 3))
-                        .font(.caption.monospacedDigit())
-                        .opacity(0.85)
-                }
             }
             if !gestureCompleted {
                 ProgressView(value: holdProgress)
@@ -254,15 +333,9 @@ struct AlarmPopupView: View {
         .cornerRadius(9)
         .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         .gesture(
-            LongPressGesture(minimumDuration: 3, maximumDistance: 30)
-                .onEnded { _ in
-                    stopHoldTracking(completed: true)
-                }
-        )
-        .simultaneousGesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { value in
-                    if holdStartedAt == nil {
+                    if holdStartedAt == nil && !gestureCompleted {
                         holdStartedAt = Date()
                         startHoldTracking()
                     }
@@ -271,7 +344,7 @@ struct AlarmPopupView: View {
                     }
                 }
                 .onEnded { _ in
-                    if !gestureCompleted && holdProgress < 1 {
+                    if !gestureCompleted {
                         stopHoldTracking(completed: false)
                     }
                 }
@@ -291,12 +364,13 @@ struct AlarmPopupView: View {
 
     private func startHoldTracking() {
         holdTimer?.invalidate()
-        holdTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { timer in
-            guard let started = holdStartedAt else {
-                timer.invalidate()
-                return
-            }
-            holdProgress = min(max(Date().timeIntervalSince(started) / 3, 0), 1)
+        holdProgress = 0
+        withAnimation(.linear(duration: 3.0)) {
+            holdProgress = 1
+        }
+        holdTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
+            guard holdStartedAt != nil, !gestureCompleted else { return }
+            stopHoldTracking(completed: true)
         }
     }
 
@@ -306,10 +380,13 @@ struct AlarmPopupView: View {
         if completed && !gestureCompleted {
             gestureCompleted = true
             holdProgress = 1
+            holdStartedAt = nil
             onConfirmWake(alarm)
         } else if !completed {
             holdStartedAt = nil
-            holdProgress = 0
+            withAnimation(.easeOut(duration: 0.12)) {
+                holdProgress = 0
+            }
         }
     }
 

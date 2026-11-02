@@ -31,6 +31,7 @@ enum WakeConfirmationMode: String, CaseIterable, Identifiable {
     case hold = "Hold for 3 seconds"
     case slide = "Slide to confirm"
     case mainWindow = "Main window"
+    case calculus = "Calculus challenge"
 
     var id: String { rawValue }
     var title: String { L(rawValue) }

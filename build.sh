@@ -72,6 +72,7 @@ compile_arch() {
         -framework UserNotifications \
         -framework Carbon \
         -framework AppIntents \
+        -framework WebKit \
         -o "$TMP_DIR/$APP_NAME-$arch" \
         "${SWIFT_FILES[@]}" 2>"$TMP_DIR/$arch.err"; then
       echo "   [$arch] compiled OK (target: $t)."

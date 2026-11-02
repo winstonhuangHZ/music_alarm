@@ -5,6 +5,7 @@ import SwiftUI
 struct AlarmRowView: View {
     @EnvironmentObject var store: AlarmStore
     @EnvironmentObject var audioManager: AudioManager
+    @EnvironmentObject var engine: AlarmEngine
     @EnvironmentObject var languageManager: LanguageManager
     @ObservedObject private var settings = AppSettings.shared
 
@@ -71,7 +72,13 @@ struct AlarmRowView: View {
             .accessibilityLabel(L("Edit Alarm"))
 
             if alarm.requiresWakeConfirmation && settings.wakeConfirmationEnabled && isAwaitingWakeConfirmation {
-                Button(action: { self.store.confirmWake(id: self.alarm.id) }) {
+                Button(action: {
+                    if settings.wakeConfirmationMode == .calculus {
+                        engine.reopenWakeConfirmation(for: alarm)
+                    } else {
+                        store.confirmWake(id: alarm.id)
+                    }
+                }) {
                     Text(L("Confirm wake-up"))
                         .font(.caption)
                         .foregroundColor(.green)

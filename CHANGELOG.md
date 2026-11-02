@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.26.1 - unreleased
+
+### Hold confirmation motion
+
+- Reworked the three-second confirmation progress from timer-driven polling to a continuous SwiftUI linear animation.
+- The gesture now starts on press, cancels on release or excessive pointer movement, and completes from one deadline timer.
+
+## 2.26.0 - unreleased
+
+### Offline calculus wake confirmation
+
+- Added an optional four-choice calculus confirmation mode for waking up.
+- Added offline LaTeX rendering for the bundled substitution and AP Calculus BC Unit 10 series questions.
+- Added convergence questions covering geometric series, nth-term behavior, p-series, integral test, direct and limit comparison, alternating series, ratio test, and absolute versus conditional convergence.
+- Prevented the alarm row and notification action from bypassing the calculus challenge after playback stops.
+- Added localized calculus prompts, answer feedback, hints, and accessibility labels across all seven language bundles.
+- Linked WebKit explicitly in universal and smoke-test builds for the local renderer.
+
 ## 2.25.1 - unreleased
 
 ### Reliability Check crash fix

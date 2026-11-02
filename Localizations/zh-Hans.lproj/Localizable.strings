@@ -268,3 +268,29 @@
 "Export diagnostic report" = "导出诊断报告";
 "Diagnostic report exported to %@" = "诊断报告已导出到 %@";
 "Snooze" = "贪睡";
+
+/* Calculus challenge */
+"Calculus challenge" = "微积分挑战";
+"Integral" = "积分";
+"Series convergence" = "级数收敛性";
+"Choose the correct answer" = "选择正确答案";
+"Calculus question" = "微积分题目";
+"Calculus answer" = "微积分选项";
+"Correct" = "正确";
+"Try again" = "再试一次";
+"Hint" = "提示";
+"Converges absolutely" = "绝对收敛";
+"Converges conditionally" = "条件收敛";
+"Converges" = "收敛";
+"Diverges" = "发散";
+"Diverges by the nth-term test" = "由通项判别法判定发散";
+"Diverges by limit comparison" = "由极限比较判别法判定发散";
+"Converges by the ratio test" = "由比值判别法判定收敛";
+"Converges by the integral test" = "由积分判别法判定收敛";
+"Converges by the p-series test" = "由 p 级数判别法判定收敛";
+"Diverges by the p-series test" = "由 p 级数判别法判定发散";
+"Converges by direct comparison" = "由直接比较判别法判定收敛";
+"Diverges by the ratio test" = "由比值判别法判定发散";
+"Converges geometrically" = "几何级数收敛";
+"Cannot be determined" = "无法确定";
+"Is geometric" = "是几何级数";

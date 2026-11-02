@@ -268,3 +268,29 @@
 "Export diagnostic report" = "Export diagnostic report";
 "Diagnostic report exported to %@" = "Diagnostic report exported to %@";
 "Snooze" = "Snooze";
+
+/* Calculus challenge */
+"Calculus challenge" = "Calculus challenge";
+"Integral" = "Integral";
+"Series convergence" = "Series convergence";
+"Choose the correct answer" = "Choose the correct answer";
+"Calculus question" = "Calculus question";
+"Calculus answer" = "Calculus answer";
+"Correct" = "Correct";
+"Try again" = "Try again";
+"Hint" = "Hint";
+"Converges absolutely" = "Converges absolutely";
+"Converges conditionally" = "Converges conditionally";
+"Converges" = "Converges";
+"Diverges" = "Diverges";
+"Diverges by the nth-term test" = "Diverges by the nth-term test";
+"Diverges by limit comparison" = "Diverges by limit comparison";
+"Converges by the ratio test" = "Converges by the ratio test";
+"Converges by the integral test" = "Converges by the integral test";
+"Converges by the p-series test" = "Converges by the p-series test";
+"Diverges by the p-series test" = "Diverges by the p-series test";
+"Converges by direct comparison" = "Converges by direct comparison";
+"Diverges by the ratio test" = "Diverges by the ratio test";
+"Converges geometrically" = "Converges geometrically";
+"Cannot be determined" = "Cannot be determined";
+"Is geometric" = "Is geometric";

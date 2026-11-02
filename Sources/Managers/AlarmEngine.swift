@@ -325,12 +325,36 @@ final class AlarmEngine: ObservableObject {
 
     func confirmWake() {
         guard let alarm = ringingAlarm else { return }
-        if currentCandidate?.isTest != true {
+        completeWakeConfirmation(for: alarm, isTest: currentCandidate?.isTest == true)
+        audioManager.stop()
+        finishCurrent()
+    }
+
+    /// Opens the confirmation UI for an alarm whose audio has already stopped.
+    /// This is used by the alarm row when the selected confirmation method is
+    /// a calculus challenge, so the row cannot bypass the challenge.
+    func reopenWakeConfirmation(for alarm: AlarmItem) {
+        guard AppSettings.shared.wakeConfirmationEnabled,
+              alarm.requiresWakeConfirmation,
+              alarm.wakeConfirmationState == .pending
+                || alarm.wakeConfirmationState == .stoppedWithoutConfirmation else { return }
+        AlarmPopupController.show(
+            alarm: alarm,
+            onSnooze: { _ in },
+            onStop: { _ in },
+            onConfirmWake: { [weak self] selectedAlarm in
+                self?.completeWakeConfirmation(for: selectedAlarm, isTest: false)
+                AlarmPopupController.dismiss()
+            },
+            showsPlaybackActions: false
+        )
+    }
+
+    private func completeWakeConfirmation(for alarm: AlarmItem, isTest: Bool) {
+        if !isTest {
             store.confirmWake(id: alarm.id)
             AlarmNotificationManager.shared.remove(alarm: alarm)
         }
-        audioManager.stop()
-        finishCurrent()
     }
 
     private func finishCurrent() {

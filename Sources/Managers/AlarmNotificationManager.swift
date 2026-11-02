@@ -121,7 +121,11 @@ final class AlarmNotificationManager: NSObject, UNUserNotificationCenterDelegate
                     completionHandler()
                     return
                 }
-                self.engine?.confirmWake()
+                if AppSettings.shared.wakeConfirmationMode == .calculus {
+                    NSApp.activate(ignoringOtherApps: true)
+                } else {
+                    self.engine?.confirmWake()
+                }
             default:
                 NSApp.activate(ignoringOtherApps: true)
             }

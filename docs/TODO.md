@@ -7,6 +7,17 @@ are removed after their version is committed and pushed.
 
 暂无已确定且未完成的项目。新功能先加入本列表，完成并验证后再移到对应版本的 Completed 小节。
 
+## Completed in 2.26.1
+
+- Smoothed the three-second hold confirmation progress and made cancellation reset the visual state cleanly.
+
+## Completed in 2.26.0
+
+- Added optional multiple-choice calculus wake confirmation with offline LaTeX rendering.
+- Added substitution integration questions and AP Calculus BC Unit 10 convergence questions covering geometric, nth-term, p-series, integral, direct comparison, limit comparison, alternating, ratio, absolute, and conditional convergence.
+- Routed the alarm row and notification confirmation paths through the calculus challenge so they cannot skip the selected verification method.
+- Added seven-language localization and WebKit build support for the challenge UI.
+
 ## Completed in 2.25.1
 
 - Fixed the Reliability Check crash caused by passing `Int` values to `%@` localized format placeholders.

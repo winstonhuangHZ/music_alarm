@@ -24,7 +24,8 @@ AppDelegate
     ├── AddAlarmView
     ├── AlarmRowView
     ├── AudioBarView / MusicLibraryPanel
-    └── AlarmPopupView
+    ├── AlarmPopupView
+    └── LatexFormulaView
 ```
 
 ### `AlarmStore`
@@ -57,6 +58,8 @@ AppDelegate
 播放列表还保存播放模式和每首音轨的播放设置。`AlarmEngine` 负责顺序、随机和单曲循环的推进；启用分阶段唤醒时，当前音轨使用自己的音量和渐入设置，否则回退到闹钟级默认值。`AudioManager` 发布当前播放器的进度和总时长，供音乐库入口显示试听进度。
 
 起床确认由 `AppSettings` 全局开启，再由单个闹钟选择是否要求确认。确认期限和方式也由设置控制，时间戳保存在闹钟记录中。
+
+当确认方式为 `Calculus challenge` 时，`AlarmPopupView` 从离线题库随机选择一道四选一题目。题库覆盖换元积分和 AP Calculus BC Unit 10 的常见级数检验：几何级数、通项判别、p 级数、积分判别、直接比较、极限比较、交错级数、比值判别，以及绝对/条件收敛。公式通过 `LatexFormulaView` 的受限本地 LaTeX 转换器显示，不访问网络。声音停止后，闹钟行和通知动作只负责重新打开题目，不能直接写入 confirmed 状态。
 
 ### `AudioManager`
 

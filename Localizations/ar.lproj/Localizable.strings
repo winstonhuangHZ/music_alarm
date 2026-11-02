@@ -273,3 +273,29 @@
 "Export diagnostic report" = "تصدير تقرير التشخيص";
 "Diagnostic report exported to %@" = "تم تصدير تقرير التشخيص إلى %@";
 "Snooze" = "غفوة";
+
+/* Calculus challenge */
+"Calculus challenge" = "تحدي التفاضل والتكامل";
+"Integral" = "تكامل";
+"Series convergence" = "تقارب المتسلسلات";
+"Choose the correct answer" = "اختر الإجابة الصحيحة";
+"Calculus question" = "سؤال التفاضل والتكامل";
+"Calculus answer" = "إجابة التفاضل والتكامل";
+"Correct" = "صحيح";
+"Try again" = "حاول مرة أخرى";
+"Hint" = "تلميح";
+"Converges absolutely" = "Converges absolutely";
+"Converges conditionally" = "Converges conditionally";
+"Converges" = "Converges";
+"Diverges" = "Diverges";
+"Diverges by the nth-term test" = "Diverges by the nth-term test";
+"Diverges by limit comparison" = "Diverges by limit comparison";
+"Converges by the ratio test" = "Converges by the ratio test";
+"Converges by the integral test" = "Converges by the integral test";
+"Converges by the p-series test" = "Converges by the p-series test";
+"Diverges by the p-series test" = "Diverges by the p-series test";
+"Converges by direct comparison" = "Converges by direct comparison";
+"Diverges by the ratio test" = "Diverges by the ratio test";
+"Converges geometrically" = "Converges geometrically";
+"Cannot be determined" = "Cannot be determined";
+"Is geometric" = "Is geometric";
